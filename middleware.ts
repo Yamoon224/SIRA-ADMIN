@@ -2,11 +2,15 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 
 const PUBLIC_PREFIXES = ["/login", "/_next", "/favicon", "/images", "/icon", "/api"]
+const PUBLIC_EXACT_PATHS = ["/"]
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl
 
-    if (PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))) {
+    if (
+        PUBLIC_EXACT_PATHS.includes(pathname) ||
+        PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"))
+    ) {
         return NextResponse.next()
     }
 

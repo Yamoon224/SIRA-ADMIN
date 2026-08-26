@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation"
-
-export default function HomePage() {
-    redirect("/login")
-}
+// La page racine ("/") affiche directement le formulaire de connexion,
+// sans redirection vers /login (qui reste accessible en direct).
+export { default } from "./login/page"
