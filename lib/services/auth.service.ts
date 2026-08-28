@@ -5,7 +5,7 @@ import { IUser } from "@/lib/@types/entities";
 export const authService = {
     login: async (credentials: { email: string; password: string }) => {
         return apiRequest<ApiResponse<{ access_token: string; user: IUser }>>({
-            endpoint: "/auth/login",
+            endpoint: "/admin/auth/login",
             method: "POST",
             data: credentials,
         })
@@ -27,14 +27,14 @@ export const authService = {
 
     logout: async () => {
         return apiRequest<ApiResponse<null>>({
-            endpoint: "/auth/logout",
+            endpoint: "/admin/auth/logout",
             method: "POST",
         })
     },
 
     refreshToken: async () => {
         return apiRequest<ApiResponse<{ token: string }>>(  {
-            endpoint: "/auth/refresh",
+            endpoint: "/admin/auth/refresh",
             method: "POST",
         })
     },

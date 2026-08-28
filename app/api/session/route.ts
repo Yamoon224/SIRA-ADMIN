@@ -13,7 +13,11 @@ export async function POST(request: NextRequest) {
 
     try {
         const response = await authService.login({ email, password })
-        const { access_token, user } = response.data
+        const { access_token, user } = response.data ?? ({} as { access_token?: string; user?: unknown })
+
+        if (!access_token) {
+            return NextResponse.json({ message: "Email ou mot de passe incorrect" }, { status: 401 })
+        }
 
         if ((user as any)?.role !== "ADMIN") {
             return NextResponse.json(
@@ -32,10 +36,15 @@ export async function POST(request: NextRequest) {
         })
         return res
     } catch (error: any) {
-        return NextResponse.json(
-            { message: "Email ou mot de passe incorrect" },
-            { status: 401 },
-        )
+        // `apiRequest` relaie le corps d'erreur du backend : on remonte son
+        // message quand il est exploitable (ex. "Compte bloqué…"), sinon un
+        // message générique pour ne pas divulguer de détail sur les identifiants.
+        const backendMessage = typeof error?.message === "string" ? error.message : null
+        const message =
+            backendMessage && backendMessage !== "Invalid credentials"
+                ? backendMessage
+                : "Email ou mot de passe incorrect"
+        return NextResponse.json({ message }, { status: 401 })
     }
 }
 
