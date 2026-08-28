@@ -121,7 +121,7 @@ export default function Page() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="Offres Actives"
-                    value={jobStats ? String(jobStats.active) : "—"}
+                    value={jobStats ? String(jobStats.active) : "-"}
                     subtitle="Annonces publiées"
                     note="+5% par rapport au mois dernier"
                     borderClass="border-[#f0b475]"
@@ -130,7 +130,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Candidatures Totales"
-                    value={jobStats ? jobStats.totalApplicants.toLocaleString("fr-FR") : "—"}
+                    value={jobStats ? jobStats.totalApplicants.toLocaleString("fr-FR") : "-"}
                     subtitle="Ce mois"
                     note="+18% par rapport au mois dernier"
                     borderClass="border-[#a777ff]"
@@ -139,7 +139,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Total Offres"
-                    value={jobStats ? jobStats.total.toLocaleString("fr-FR") : "—"}
+                    value={jobStats ? jobStats.total.toLocaleString("fr-FR") : "-"}
                     subtitle="Toutes catégories"
                     note="+12% par rapport au mois dernier"
                     borderClass="border-[#55d5ac]"
@@ -148,7 +148,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Brouillons"
-                    value={jobStats ? String(jobStats.draft) : "—"}
+                    value={jobStats ? String(jobStats.draft) : "-"}
                     subtitle="En attente de publication"
                     note="+8% par rapport au mois dernier"
                     borderClass="border-[#d9dce6]"
@@ -206,7 +206,7 @@ export default function Page() {
                                         </div>
                                         <div>
                                             <p className="text-[12px] font-medium text-[#252c3b]">{job.title}</p>
-                                            <p className="text-[11px] text-[#7f8797]">{job.company?.name ?? "—"}</p>
+                                            <p className="text-[11px] text-[#7f8797]">{job.company?.name ?? "-"}</p>
                                             <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8a92a3]">
                                                 <span className="flex items-center gap-1">
                                                     <MapPin className="h-3 w-3" />

@@ -97,10 +97,10 @@ export default function Page() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <Kpi title="Portfolios Actifs" value={portfolioStats ? portfolioStats.totalPortfolios.toLocaleString("fr-FR") : "—"} icon={FolderOpen} />
-                <Kpi title="Vues Totales" value={portfolioStats ? portfolioStats.totalViews.toLocaleString("fr-FR") : "—"} icon={Eye} />
-                <Kpi title="Likes" value={portfolioStats ? portfolioStats.totalLikes.toLocaleString("fr-FR") : "—"} icon={Star} />
-                <Kpi title="Téléchargements" value={portfolioStats ? portfolioStats.totalDownloads.toLocaleString("fr-FR") : "—"} icon={Image} />
+                <Kpi title="Portfolios Actifs" value={portfolioStats ? portfolioStats.totalPortfolios.toLocaleString("fr-FR") : "-"} icon={FolderOpen} />
+                <Kpi title="Vues Totales" value={portfolioStats ? portfolioStats.totalViews.toLocaleString("fr-FR") : "-"} icon={Eye} />
+                <Kpi title="Likes" value={portfolioStats ? portfolioStats.totalLikes.toLocaleString("fr-FR") : "-"} icon={Star} />
+                <Kpi title="Téléchargements" value={portfolioStats ? portfolioStats.totalDownloads.toLocaleString("fr-FR") : "-"} icon={Image} />
             </div>
 
             <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
@@ -181,7 +181,7 @@ export default function Page() {
                                                     {item.user?.name ? getInitials(item.user.name) : "?"}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[12px] font-medium text-[#252c3b]">{item.user?.name ?? "—"}</p>
+                                                    <p className="text-[12px] font-medium text-[#252c3b]">{item.user?.name ?? "-"}</p>
                                                 </div>
                                             </div>
                                             <Badge className="rounded-full border-0 bg-[#edf0f6] px-2 py-0.5 text-[10px] text-[#3d4354]">
@@ -227,7 +227,7 @@ export default function Page() {
                                                 {item.user?.name ? getInitials(item.user.name) : "?"}
                                             </div>
                                             <div>
-                                                <p className="text-[12px] font-medium text-[#252c3b]">{item.user?.name ?? "—"}</p>
+                                                <p className="text-[12px] font-medium text-[#252c3b]">{item.user?.name ?? "-"}</p>
                                             </div>
                                         </div>
                                         {item.featured ? (

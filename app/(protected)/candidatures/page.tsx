@@ -77,15 +77,15 @@ export default function Page() {
 
     const avgScore = candidates.length > 0
         ? `${Math.round(candidates.reduce((s, c) => s + (c.score ?? 0), 0) / candidates.length)}%`
-        : "—"
+        : "-"
 
     const tauxConversion = statsData && statsData.total > 0
         ? `${(statsData.approuvees / statsData.total * 100).toFixed(1)}%`
-        : "—"
+        : "-"
 
     const metrics = [
         {
-            title: statsData ? String(statsData.total) : "—",
+            title: statsData ? String(statsData.total) : "-",
             subtitle: "Total candidatures",
             context: "Ce mois",
             growth: "+12%",
@@ -94,7 +94,7 @@ export default function Page() {
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
         },
         {
-            title: statsData ? String(statsData.enAttente) : "—",
+            title: statsData ? String(statsData.enAttente) : "-",
             subtitle: "En attente",
             context: "À traiter",
             growth: "+5%",
@@ -103,7 +103,7 @@ export default function Page() {
             growthClass: "bg-[#fff3dd] text-[#f0a04b]",
         },
         {
-            title: statsData ? String(statsData.enCours) : "—",
+            title: statsData ? String(statsData.enCours) : "-",
             subtitle: "En cours d'examen",
             context: "En processus",
             growth: "+18%",
@@ -112,7 +112,7 @@ export default function Page() {
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
         },
         {
-            title: statsData ? String(statsData.approuvees) : "—",
+            title: statsData ? String(statsData.approuvees) : "-",
             subtitle: "Approuvées",
             context: "Validées",
             growth: "+22%",
@@ -275,8 +275,8 @@ export default function Page() {
                                 </Badge>
                             </div>
 
-                            <p className="text-[17px] font-medium text-[#2c3343]">{candidate.jobOffer?.title ?? "—"}</p>
-                            <p className="text-[14px] text-[#7f8797]">{candidate.jobOffer?.company?.name ?? "—"}</p>
+                            <p className="text-[17px] font-medium text-[#2c3343]">{candidate.jobOffer?.title ?? "-"}</p>
+                            <p className="text-[14px] text-[#7f8797]">{candidate.jobOffer?.company?.name ?? "-"}</p>
 
                             <div className="mt-3 flex items-center justify-between text-[12px]">
                                 <p className="text-[#7f8797]">

@@ -238,7 +238,7 @@ export default function Page() {
                                             </p>
                                         </td>
                                         <td className="py-4 px-4">
-                                            <p className="text-sm text-gray-400">—</p>
+                                            <p className="text-sm text-gray-400">-</p>
                                         </td>
                                         <td className="py-4 px-4">
                                             <div className="flex items-center gap-2">

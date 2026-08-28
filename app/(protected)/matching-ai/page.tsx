@@ -62,10 +62,10 @@ export default function Page() {
     }, [])
 
     const stats = [
-        { title: "Matchings Aujourd'hui", value: matchingStats ? String(matchingStats.totalMatches) : "—", icon: Users },
-        { title: "Score Moyen", value: matchingStats ? `${matchingStats.averageScore}%` : "—", icon: Brain },
-        { title: "Taux de Réussite", value: matchingStats ? `${matchingStats.successRate}%` : "—", icon: TrendingUp },
-        { title: "En Attente", value: matchingStats ? String(matchingStats.pendingMatches) : "—", icon: Heart },
+        { title: "Matchings Aujourd'hui", value: matchingStats ? String(matchingStats.totalMatches) : "-", icon: Users },
+        { title: "Score Moyen", value: matchingStats ? `${matchingStats.averageScore}%` : "-", icon: Brain },
+        { title: "Taux de Réussite", value: matchingStats ? `${matchingStats.successRate}%` : "-", icon: TrendingUp },
+        { title: "En Attente", value: matchingStats ? String(matchingStats.pendingMatches) : "-", icon: Heart },
     ]
 
     const perfBars = algorithmPerf
@@ -185,11 +185,11 @@ export default function Page() {
                                 <>
                                     <div className="flex items-center justify-between text-[12px]">
                                         <span className="text-[#4a5162]">Candidats actifs</span>
-                                        <span className="font-semibold text-[#2f3647]">—</span>
+                                        <span className="font-semibold text-[#2f3647]">-</span>
                                     </div>
                                     <div className="flex items-center justify-between text-[12px]">
                                         <span className="text-[#4a5162]">Offres ouvertes</span>
-                                        <span className="font-semibold text-[#2f3647]">—</span>
+                                        <span className="font-semibold text-[#2f3647]">-</span>
                                     </div>
                                 </>
                             )}

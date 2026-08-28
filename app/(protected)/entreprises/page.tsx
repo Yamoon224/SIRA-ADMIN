@@ -100,7 +100,7 @@ export default function EntreprisesPage() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="Total Entreprises"
-                    value={stats ? stats.total.toLocaleString("fr-FR") : "—"}
+                    value={stats ? stats.total.toLocaleString("fr-FR") : "-"}
                     note="+8% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Building2}
@@ -109,7 +109,7 @@ export default function EntreprisesPage() {
                 />
                 <KpiCard
                     title="Actives"
-                    value={stats ? String(stats.active) : "—"}
+                    value={stats ? String(stats.active) : "-"}
                     note="+12% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={TrendingUp}
@@ -118,7 +118,7 @@ export default function EntreprisesPage() {
                 />
                 <KpiCard
                     title="Inactives"
-                    value={stats ? String(stats.inactive) : "—"}
+                    value={stats ? String(stats.inactive) : "-"}
                     note="+5% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Briefcase}
@@ -127,7 +127,7 @@ export default function EntreprisesPage() {
                 />
                 <KpiCard
                     title="Nouvelles ce mois"
-                    value={stats ? String(stats.newThisMonth) : "—"}
+                    value={stats ? String(stats.newThisMonth) : "-"}
                     note="+18% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Users}
@@ -236,14 +236,14 @@ export default function EntreprisesPage() {
                                                 <p className="text-[12px] font-medium text-[#252c3b]">{company.name}</p>
                                                 <ExternalLink className="h-3 w-3 text-[#50586a]" />
                                             </div>
-                                            <p className="text-[11px] text-[#7f8797]">{company.email ?? "—"}</p>
+                                            <p className="text-[11px] text-[#7f8797]">{company.email ?? "-"}</p>
                                             <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8a92a3]">
                                                 <Badge className="rounded-full border-0 bg-[#f1f3f7] px-2 py-0.5 text-[10px] font-medium text-[#202737]">
                                                     {company.sector}
                                                 </Badge>
                                                 <span className="flex items-center gap-1">
                                                     <MapPin className="h-3 w-3" />
-                                                    {company.location ?? company.headquarters ?? "—"}
+                                                    {company.location ?? company.headquarters ?? "-"}
                                                 </span>
                                             </div>
                                         </div>
@@ -251,12 +251,12 @@ export default function EntreprisesPage() {
 
                                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
                                         <div className="text-right">
-                                            <p className="text-[13px] font-semibold text-[#ef9435]">—</p>
+                                            <p className="text-[13px] font-semibold text-[#ef9435]">-</p>
                                             <p className="text-[10px] text-[#8a92a3]">Offres actives</p>
                                         </div>
 
                                         <div className="text-right">
-                                            <p className="text-[13px] font-semibold text-[#2b78f6]">—</p>
+                                            <p className="text-[13px] font-semibold text-[#2b78f6]">-</p>
                                             <p className="text-[10px] text-[#8a92a3]">Candidatures</p>
                                         </div>
 

@@ -58,10 +58,10 @@ export default function Page() {
     }, [])
 
     const stats = [
-        { label: "Scores Générés", value: scoringStats ? scoringStats.generatedScores.toLocaleString("fr-FR") : "—", icon: Brain },
-        { label: "Score Moyen Global", value: scoringStats ? String(scoringStats.averageScore) : "—", icon: Target },
-        { label: "Précision IA", value: scoringStats ? `${scoringStats.accuracy}%` : "—", icon: CircleCheck },
-        { label: "Temps Traitement", value: scoringStats?.averageTime ?? "—", icon: Zap },
+        { label: "Scores Générés", value: scoringStats ? scoringStats.generatedScores.toLocaleString("fr-FR") : "-", icon: Brain },
+        { label: "Score Moyen Global", value: scoringStats ? String(scoringStats.averageScore) : "-", icon: Target },
+        { label: "Précision IA", value: scoringStats ? `${scoringStats.accuracy}%` : "-", icon: CircleCheck },
+        { label: "Temps Traitement", value: scoringStats?.averageTime ?? "-", icon: Zap },
     ]
 
     const displayedCriteria = criteria.length > 0
@@ -157,9 +157,9 @@ export default function Page() {
                                     Précision
                                 </p>
                                 <p className="mt-1 text-[34px] font-semibold leading-none text-[#232a38]">
-                                    {performance ? `${performance.precision}%` : "—"}
+                                    {performance ? `${performance.precision}%` : "-"}
                                 </p>
-                                <p className="mt-1 text-[10px] text-[#8a92a3]">F1 Score: {performance?.f1Score ?? "—"}</p>
+                                <p className="mt-1 text-[10px] text-[#8a92a3]">F1 Score: {performance?.f1Score ?? "-"}</p>
                             </div>
                             <div>
                                 <p className="flex items-center gap-1 text-[12px] font-semibold text-[#f0a04b]">
@@ -167,7 +167,7 @@ export default function Page() {
                                     Rappel
                                 </p>
                                 <p className="mt-1 text-[34px] font-semibold leading-none text-[#232a38]">
-                                    {performance ? `${performance.recall}%` : "—"}
+                                    {performance ? `${performance.recall}%` : "-"}
                                 </p>
                                 <p className="mt-1 text-[10px] text-[#8a92a3]">Taux de détection</p>
                             </div>

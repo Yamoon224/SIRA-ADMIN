@@ -130,14 +130,14 @@ export default function BlogPage() {
                             ) : articles.map((article) => (
                                 <TableRow key={article.id}>
                                     <TableCell className="font-medium">{article.title}</TableCell>
-                                    <TableCell className="text-muted-foreground">{article.authorName || "—"}</TableCell>
+                                    <TableCell className="text-muted-foreground">{article.authorName || "-"}</TableCell>
                                     <TableCell>
                                         <Badge variant={article.status === "PUBLISHED" ? "default" : "secondary"}>
                                             {article.status === "PUBLISHED" ? "Publié" : "Brouillon"}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString("fr-FR") : "—"}
+                                        {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString("fr-FR") : "-"}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => openEdit(article)}>

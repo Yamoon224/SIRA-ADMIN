@@ -172,9 +172,9 @@ export default function Page() {
                                         </Badge>
                                         <div>
                                             <p className="text-[12px] font-medium text-[#252c3b]">
-                                                {log.userName ?? "Système"} {log.auditableType ? `— ${log.auditableType.split("\\").pop()}` : ""}
+                                                {log.userName ?? "Système"} {log.auditableType ? `- ${log.auditableType.split("\\").pop()}` : ""}
                                             </p>
-                                            <p className="text-[11px] text-[#7f8797]">{log.userEmail ?? "—"}</p>
+                                            <p className="text-[11px] text-[#7f8797]">{log.userEmail ?? "-"}</p>
                                         </div>
                                     </div>
 
@@ -183,7 +183,7 @@ export default function Page() {
                                             <p className="text-[11px] text-[#4a5162]">
                                                 {new Date(log.createdAt).toLocaleString("fr-FR")}
                                             </p>
-                                            <p className="text-[10px] text-[#8a92a3]">{log.ipAddress ?? "—"}</p>
+                                            <p className="text-[10px] text-[#8a92a3]">{log.ipAddress ?? "-"}</p>
                                         </div>
                                         <Button
                                             variant="outline"
@@ -241,12 +241,12 @@ export default function Page() {
                             <div className="grid grid-cols-2 gap-2">
                                 <p><span className="text-[#8a92a3]">Action :</span> {ACTION_LABELS[selected.action] ?? selected.action}</p>
                                 <p><span className="text-[#8a92a3]">Date :</span> {new Date(selected.createdAt).toLocaleString("fr-FR")}</p>
-                                <p><span className="text-[#8a92a3]">Auteur :</span> {selected.userName ?? "Système"} ({selected.userRole ?? "—"})</p>
-                                <p><span className="text-[#8a92a3]">Email :</span> {selected.userEmail ?? "—"}</p>
-                                <p><span className="text-[#8a92a3]">Ressource :</span> {selected.auditableType?.split("\\").pop() ?? "—"}</p>
-                                <p><span className="text-[#8a92a3]">ID ressource :</span> {selected.auditableId ?? "—"}</p>
-                                <p><span className="text-[#8a92a3]">Méthode :</span> {selected.method ?? "—"}</p>
-                                <p><span className="text-[#8a92a3]">IP :</span> {selected.ipAddress ?? "—"}</p>
+                                <p><span className="text-[#8a92a3]">Auteur :</span> {selected.userName ?? "Système"} ({selected.userRole ?? "-"})</p>
+                                <p><span className="text-[#8a92a3]">Email :</span> {selected.userEmail ?? "-"}</p>
+                                <p><span className="text-[#8a92a3]">Ressource :</span> {selected.auditableType?.split("\\").pop() ?? "-"}</p>
+                                <p><span className="text-[#8a92a3]">ID ressource :</span> {selected.auditableId ?? "-"}</p>
+                                <p><span className="text-[#8a92a3]">Méthode :</span> {selected.method ?? "-"}</p>
+                                <p><span className="text-[#8a92a3]">IP :</span> {selected.ipAddress ?? "-"}</p>
                             </div>
                             {selected.url && <p className="break-all"><span className="text-[#8a92a3]">URL :</span> {selected.url}</p>}
                             {selected.oldValues && (

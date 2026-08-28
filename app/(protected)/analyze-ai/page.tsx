@@ -90,7 +90,7 @@ export default function Page() {
     const kpiCards = [
         {
             label: "CV Analysés",
-            value: loading ? "—" : totalAnalyzed.toLocaleString(),
+            value: loading ? "-" : totalAnalyzed.toLocaleString(),
             note: "Ce mois",
             growth: "+23% par rapport au mois dernier",
             icon: FileText,
@@ -99,7 +99,7 @@ export default function Page() {
         },
         {
             label: "Score Moyen",
-            value: loading ? "—" : `${avgScore}%`,
+            value: loading ? "-" : `${avgScore}%`,
             note: "Performance globale",
             growth: "+8% par rapport au mois dernier",
             icon: Award,
@@ -108,7 +108,7 @@ export default function Page() {
         },
         {
             label: "Taux de Réussite",
-            value: loading ? "—" : `${successRate}%`,
+            value: loading ? "-" : `${successRate}%`,
             note: "Analyses réussies",
             growth: "+12% par rapport au mois dernier",
             icon: BarChart3,
@@ -117,7 +117,7 @@ export default function Page() {
         },
         {
             label: "En cours d'analyse",
-            value: loading ? "—" : String(cvStats?.analyzing ?? 0),
+            value: loading ? "-" : String(cvStats?.analyzing ?? 0),
             note: "Traitement en cours",
             growth: "+12% par rapport au mois dernier",
             icon: Sparkles,
@@ -192,7 +192,7 @@ export default function Page() {
                                         <p className="text-[12px] text-[#7f8797]">Évaluation générale du profil</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-[18px] font-semibold text-[#2f6ff0]">{lastCV ? `${lastCV.analysisScore}%` : "—"}</p>
+                                        <p className="text-[18px] font-semibold text-[#2f6ff0]">{lastCV ? `${lastCV.analysisScore}%` : "-"}</p>
                                         <Progress value={lastCV?.analysisScore ?? 0} className="mt-1 h-2 w-24 bg-[#ebeff8]" />
                                     </div>
                                 </div>
@@ -213,10 +213,10 @@ export default function Page() {
                                     <div>
                                         <p className="mb-2 text-[12px] font-semibold text-[#f0a04b]">Score global</p>
                                         <div className="text-[28px] font-semibold text-[#2f6ff0]">
-                                            {lastCV ? `${lastCV.analysisScore}%` : "—"}
+                                            {lastCV ? `${lastCV.analysisScore}%` : "-"}
                                         </div>
                                         <p className="text-[11px] text-[#8a92a3] mt-1">
-                                            Statut: {lastCV?.status ?? "—"}
+                                            Statut: {lastCV?.status ?? "-"}
                                         </p>
                                     </div>
                                 </div>

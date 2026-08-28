@@ -3,8 +3,8 @@ import { cookies } from "next/headers"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://goriya-backend-production.up.railway.app"
 
-// Types autorisés à s'afficher inline (ex: <img src=...>). Tout le reste — notamment
-// text/html et image/svg+xml, qui peuvent contenir du script exécutable — est neutralisé
+// Types autorisés à s'afficher inline (ex: <img src=...>). Tout le reste - notamment
+// text/html et image/svg+xml, qui peuvent contenir du script exécutable - est neutralisé
 // en application/octet-stream et forcé en téléchargement, pour empêcher le navigateur de
 // rendre un fichier uploadé (avatar, CV...) avec un Content-Type forgé sur cette origine
 // authentifiée (XSS via same-origin file serving).

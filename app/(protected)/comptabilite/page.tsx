@@ -105,28 +105,28 @@ export default function Page() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="Revenus totaux (FCFA)"
-                    value={loading ? "—" : Number(revenue).toLocaleString("fr-FR")}
+                    value={loading ? "-" : Number(revenue).toLocaleString("fr-FR")}
                     note="Abonnements cumulés"
                     noteClass="text-[#23b26f]"
                     icon={DollarSign}
                 />
                 <KpiCard
                     title="Abonnements actifs"
-                    value={loading ? "—" : active.toLocaleString()}
+                    value={loading ? "-" : active.toLocaleString()}
                     note={`sur ${total} total`}
                     noteClass="text-[#23b26f]"
                     icon={Users}
                 />
                 <KpiCard
                     title="Total abonnements"
-                    value={loading ? "—" : total.toLocaleString()}
+                    value={loading ? "-" : total.toLocaleString()}
                     note="Tous statuts confondus"
                     noteClass="text-[#23b26f]"
                     icon={UserPlus}
                 />
                 <KpiCard
                     title="Abonnements expirés"
-                    value={loading ? "—" : expired.toLocaleString()}
+                    value={loading ? "-" : expired.toLocaleString()}
                     note="À renouveler"
                     noteClass="text-[#99a1b4]"
                     icon={AlertTriangle}
@@ -189,11 +189,11 @@ export default function Page() {
             <div className="rounded-full bg-[#eef3fb] p-1">
                 <div className="grid grid-cols-4 gap-1 text-center text-[10px] text-[#7e8799]">
                     <div className="rounded-full bg-[#2f80ed] px-3 py-1.5 text-white">
-                        Tous <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[#2f80ed]">{loading ? "—" : total}</span>
+                        Tous <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-[#2f80ed]">{loading ? "-" : total}</span>
                     </div>
-                    <div className="px-3 py-1.5">Actifs <span className="ml-1 text-[#4d5567]">{loading ? "—" : active}</span></div>
-                    <div className="px-3 py-1.5">Expirés <span className="ml-1 text-[#4d5567]">{loading ? "—" : expired}</span></div>
-                    <div className="px-3 py-1.5">Annulés <span className="ml-1 text-[#4d5567]">{loading ? "—" : Math.max(0, total - active - expired)}</span></div>
+                    <div className="px-3 py-1.5">Actifs <span className="ml-1 text-[#4d5567]">{loading ? "-" : active}</span></div>
+                    <div className="px-3 py-1.5">Expirés <span className="ml-1 text-[#4d5567]">{loading ? "-" : expired}</span></div>
+                    <div className="px-3 py-1.5">Annulés <span className="ml-1 text-[#4d5567]">{loading ? "-" : Math.max(0, total - active - expired)}</span></div>
                 </div>
             </div>
 
@@ -228,13 +228,13 @@ export default function Page() {
                                         </TableCell>
                                     </TableRow>
                                 ) : subscriptions.map((sub) => {
-                                    const name = sub.user?.name ?? "—"
-                                    const email = sub.user?.email ?? "—"
+                                    const name = sub.user?.name ?? "-"
+                                    const email = sub.user?.email ?? "-"
                                     const initials = name.split(" ").map((w: string) => w[0]).filter(Boolean).join("").toUpperCase().slice(0, 2)
-                                    const planName = sub.plan?.name ?? "—"
-                                    const amount = sub.plan?.price != null ? Number(sub.plan.price).toLocaleString("fr-FR") : "—"
+                                    const planName = sub.plan?.name ?? "-"
+                                    const amount = sub.plan?.price != null ? Number(sub.plan.price).toLocaleString("fr-FR") : "-"
                                     const statusInfo = STATUS_MAP[sub.status] ?? { label: sub.status, cls: "bg-[#f0f2f6] text-[#4a5162]" }
-                                    const endDate = sub.endDate ? new Date(sub.endDate).toLocaleDateString("fr-FR") : "—"
+                                    const endDate = sub.endDate ? new Date(sub.endDate).toLocaleDateString("fr-FR") : "-"
                                     return (
                                         <TableRow key={sub.id} className="border-b border-[#e9edf5] hover:bg-[#fbfcff]">
                                             <TableCell className="px-4 py-3">

@@ -117,7 +117,7 @@ export default function Page() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <KpiCard
                     title="Total Candidats"
-                    value={studentStats ? studentStats.total.toLocaleString("fr-FR") : "—"}
+                    value={studentStats ? studentStats.total.toLocaleString("fr-FR") : "-"}
                     note="+12% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Users}
@@ -126,7 +126,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Profils Actifs"
-                    value={studentStats ? String(studentStats.active) : "—"}
+                    value={studentStats ? String(studentStats.active) : "-"}
                     note="+8% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Award}
@@ -135,7 +135,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Inactifs"
-                    value={studentStats ? String(studentStats.inactive) : "—"}
+                    value={studentStats ? String(studentStats.inactive) : "-"}
                     note="+3% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={Sparkles}
@@ -144,7 +144,7 @@ export default function Page() {
                 />
                 <KpiCard
                     title="Nouveaux ce mois"
-                    value={studentStats ? String(studentStats.newThisMonth) : "—"}
+                    value={studentStats ? String(studentStats.newThisMonth) : "-"}
                     note="+15% par rapport au mois dernier"
                     noteClass="text-[#23b26f]"
                     icon={TrendingUp}
@@ -203,7 +203,7 @@ export default function Page() {
                                                 <Badge className="rounded-full border-0 bg-[#f1f3f7] px-2 py-0.5 text-[10px] font-medium text-[#202737]">
                                                     {student.role}
                                                 </Badge>
-                                                <span>{student.company?.name ?? "—"}</span>
+                                                <span>{student.company?.name ?? "-"}</span>
                                             </div>
                                         </div>
                                     </div>

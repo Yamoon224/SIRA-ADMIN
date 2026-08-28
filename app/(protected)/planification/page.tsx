@@ -76,10 +76,10 @@ export default function Page() {
     }, [])
 
     const statCards = [
-        { title: "Événements Aujourd'hui", value: planStats ? String(planStats.totalEvents) : "—", icon: Calendar },
-        { title: "À Venir", value: planStats ? String(planStats.upcomingEvents) : "—", icon: Users },
-        { title: "Terminés", value: planStats ? String(planStats.completedEvents) : "—", icon: Video },
-        { title: "Taux de Présence", value: "—", icon: CheckCircle2 },
+        { title: "Événements Aujourd'hui", value: planStats ? String(planStats.totalEvents) : "-", icon: Calendar },
+        { title: "À Venir", value: planStats ? String(planStats.upcomingEvents) : "-", icon: Users },
+        { title: "Terminés", value: planStats ? String(planStats.completedEvents) : "-", icon: Video },
+        { title: "Taux de Présence", value: "-", icon: CheckCircle2 },
     ]
 
     if (loading) {
@@ -130,7 +130,7 @@ export default function Page() {
                         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#242a38] sm:text-[24px] lg:text-[30px]">
                                 <CalendarDays className="h-4 w-4" />
-                                Aujourd'hui — {todayLabel}
+                                Aujourd'hui - {todayLabel}
                             </h2>
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" className="h-8 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[11px] text-[#4d5567]">
@@ -155,7 +155,7 @@ export default function Page() {
                                                         {formatTime(event.startTime)}
                                                     </p>
                                                     <p className="text-[10px] text-[#8a92a3]">
-                                                        {event.endTime ? durationMinutes(event.startTime, event.endTime) : "—"}
+                                                        {event.endTime ? durationMinutes(event.startTime, event.endTime) : "-"}
                                                     </p>
                                                 </div>
                                                 <div className="mt-0.5 h-10 w-[2px] bg-[#3f7fe8]" />
@@ -175,7 +175,7 @@ export default function Page() {
                                                         ) : null}
                                                         <span className="flex items-center gap-1">
                                                             <Users className="h-3.5 w-3.5" />
-                                                            {Array.isArray(event.participants) ? event.participants.join(", ") : "—"}
+                                                            {Array.isArray(event.participants) ? event.participants.join(", ") : "-"}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -247,13 +247,13 @@ export default function Page() {
                             <div className="grid grid-cols-2 gap-3 text-center">
                                 <div>
                                     <p className="text-[31px] font-semibold text-[#75b629]">
-                                        {planStats?.upcomingEvents ?? "—"}
+                                        {planStats?.upcomingEvents ?? "-"}
                                     </p>
                                     <p className="text-[10px] text-[#8a92a3]">À venir</p>
                                 </div>
                                 <div>
                                     <p className="text-[31px] font-semibold text-[#2f80ed]">
-                                        {planStats ? `${planStats.completedEvents}/${planStats.totalEvents}` : "—"}
+                                        {planStats ? `${planStats.completedEvents}/${planStats.totalEvents}` : "-"}
                                     </p>
                                     <p className="text-[10px] text-[#8a92a3]">Événements terminés</p>
                                 </div>

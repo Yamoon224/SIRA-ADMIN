@@ -182,7 +182,7 @@ export default function Page() {
             {activeTab !== "general" && (
                 <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
                     <CardContent className="px-4 py-8 text-center text-[13px] text-[#8a92a3]">
-                        Section "{TABS.find((t) => t.key === activeTab)?.label}" — à implémenter.
+                        Section "{TABS.find((t) => t.key === activeTab)?.label}" - à implémenter.
                     </CardContent>
                 </Card>
             )}

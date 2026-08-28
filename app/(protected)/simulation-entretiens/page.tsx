@@ -75,10 +75,10 @@ export default function Page() {
     }, [])
 
     const stats = [
-        { label: "Sessions Aujourd'hui", value: interviewStats ? String(interviewStats.todaySessions) : "—", icon: MessageSquare },
-        { label: "Score Moyen", value: interviewStats ? String(interviewStats.averageScore) : "—", icon: Trophy },
-        { label: "Durée Moyenne", value: interviewStats?.averageDuration ?? "—", icon: Clock3 },
-        { label: "Satisfaction", value: interviewStats ? `${interviewStats.satisfaction}/5` : "—", icon: Star },
+        { label: "Sessions Aujourd'hui", value: interviewStats ? String(interviewStats.todaySessions) : "-", icon: MessageSquare },
+        { label: "Score Moyen", value: interviewStats ? String(interviewStats.averageScore) : "-", icon: Trophy },
+        { label: "Durée Moyenne", value: interviewStats?.averageDuration ?? "-", icon: Clock3 },
+        { label: "Satisfaction", value: interviewStats ? `${interviewStats.satisfaction}/5` : "-", icon: Star },
     ]
 
     if (loading) {
