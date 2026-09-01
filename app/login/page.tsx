@@ -129,7 +129,7 @@ export default function Page() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <Globe className="h-5 w-5 shrink-0" />
-                                    <p>Site internet: <a href="https://goriya.net" target="_blank" rel="noopener noreferrer" className="hover:underline">goriya.net</a></p>
+                                    <p>Site internet: <a href="https://goriya.net" target="_blank" rel="noopener noreferrer" className="hover:underline">www.goriya.net</a></p>
                                 </div>
                             </div>
                         </div>
