@@ -123,21 +123,21 @@ export default function Page() {
                                     <Mail className="mt-0.5 h-5 w-5 shrink-0" />
                                     <div>
                                         <p>Courriel:</p>
-                                        <p>joigne@email.com</p>
+                                        <a href="mailto:support@goriya.net" className="hover:underline">support@goriya.net</a>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <Phone className="mt-0.5 h-5 w-5 shrink-0" />
                                     <div>
                                         <p>Téléphone:</p>
-                                        <p>+44 1245 572 135</p>
+                                        <a href="tel:+2250758700692" className="hover:underline">+225 07 58 70 06 92</a>
                                     </div>
                                 </div>
                                 <div className="flex items-start gap-3">
                                     <Globe className="mt-0.5 h-5 w-5 shrink-0" />
                                     <div>
                                         <p>Site internet:</p>
-                                        <p>www.goriya.com</p>
+                                        <a href="https://goriya.net" target="_blank" rel="noopener noreferrer" className="hover:underline">goriya.net</a>
                                     </div>
                                 </div>
                             </div>
