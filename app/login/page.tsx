@@ -119,26 +119,17 @@ export default function Page() {
 
                         <div className="mx-auto mt-0 w-full rounded-[0_0_26px_26px] bg-black/45 px-5 py-3 text-white backdrop-blur-sm sm:px-6 md:absolute md:left-0 md:top-full md:mt-0 md:w-[450px] md:px-8 md:py-2">
                             <div className="space-y-2 text-[14px] leading-tight font-light sm:text-[15px] md:space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <Mail className="mt-0.5 h-5 w-5 shrink-0" />
-                                    <div>
-                                        <p>Courriel:</p>
-                                        <a href="mailto:support@goriya.net" className="hover:underline">support@goriya.net</a>
-                                    </div>
+                                <div className="flex items-center gap-3">
+                                    <Mail className="h-5 w-5 shrink-0" />
+                                    <p>Courriel: <a href="mailto:support@goriya.net" className="hover:underline">support@goriya.net</a></p>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <Phone className="mt-0.5 h-5 w-5 shrink-0" />
-                                    <div>
-                                        <p>Téléphone:</p>
-                                        <a href="tel:+2250758700692" className="hover:underline">+225 07 58 70 06 92</a>
-                                    </div>
+                                <div className="flex items-center gap-3">
+                                    <Phone className="h-5 w-5 shrink-0" />
+                                    <p>Téléphone: <a href="tel:+2250758700692" className="hover:underline">+225 07 58 70 06 92</a></p>
                                 </div>
-                                <div className="flex items-start gap-3">
-                                    <Globe className="mt-0.5 h-5 w-5 shrink-0" />
-                                    <div>
-                                        <p>Site internet:</p>
-                                        <a href="https://goriya.net" target="_blank" rel="noopener noreferrer" className="hover:underline">goriya.net</a>
-                                    </div>
+                                <div className="flex items-center gap-3">
+                                    <Globe className="h-5 w-5 shrink-0" />
+                                    <p>Site internet: <a href="https://goriya.net" target="_blank" rel="noopener noreferrer" className="hover:underline">goriya.net</a></p>
                                 </div>
                             </div>
                         </div>
