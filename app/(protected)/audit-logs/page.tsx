@@ -19,16 +19,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog"
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from "@/components/ui/pagination"
 import { auditLogService } from "@/lib/services/audit-log.service"
 import type { IAuditLog } from "@/lib/@types/entities"
+import { DataPagination, DEFAULT_PAGE_SIZE } from "@/components/ui/data-pagination"
 
 const ACTION_LABELS: Record<string, string> = {
     created: "Création",
@@ -57,6 +50,7 @@ export default function Page() {
     const [page, setPage] = useState(1)
     const [totalPages, setTotalPages] = useState(1)
     const [total, setTotal] = useState(0)
+    const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE)
     const [selected, setSelected] = useState<IAuditLog | null>(null)
 
     const loadLogs = async () => {
@@ -64,11 +58,11 @@ export default function Page() {
         try {
             const res = await auditLogService.paginate({
                 page,
-                limit: 20,
+                limit: pageSize,
                 search: search || undefined,
                 action: actionFilter || undefined,
             })
-            const body = (res as any)?.data !== undefined ? res : { data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 1 } }
+            const body = (res as any)?.data !== undefined ? res : { data: [], meta: { total: 0, page: 1, limit: pageSize, totalPages: 1 } }
             setLogs(Array.isArray(body.data) ? body.data : [])
             setTotalPages(body.meta?.totalPages ?? 1)
             setTotal(body.meta?.total ?? 0)
@@ -89,7 +83,7 @@ export default function Page() {
     useEffect(() => {
         loadLogs()
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, actionFilter])
+    }, [page, pageSize, actionFilter])
 
     const handleSearchSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -199,35 +193,90 @@ export default function Page() {
                         </div>
                     )}
 
-                    {totalPages > 1 && (
-                        <Pagination className="mt-4 justify-end">
-                            <PaginationContent>
-                                <PaginationItem>
-                                    <PaginationPrevious
-                                        href="#"
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            if (page > 1) setPage(page - 1)
-                                        }}
-                                    />
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <PaginationLink href="#" isActive>
-                                        {page} / {totalPages}
-                                    </PaginationLink>
-                                </PaginationItem>
-                                <PaginationItem>
-                                    <PaginationNext
-                                        href="#"
-                                        onClick={(e) => {
-                                            e.preventDefault()
-                                            if (page < totalPages) setPage(page + 1)
-                                        }}
-                                    />
-                                </PaginationItem>
-                            </PaginationContent>
-                        </Pagination>
+                    <DataPagination
+                        page={page}
+                        totalPages={totalPages}
+                        total={total}
+                        currentCount={logs.length}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size)
+                            setPage(1)
+                        }}
+                        disabled={loading}
+                        className="mt-4"
+                    />
+                </CardContent>
+            </Card>
+
+            <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
+                <CardContent className="px-4 py-4">
+                    <h2 className="mb-4 flex items-center gap-2 text-[24px] font-semibold text-[#242a38]">
+                        <ScrollText className="h-5 w-5 text-[#4d5567]" />
+                        Entrées
+                    </h2>
+
+                    {loading ? (
+                        <div className="flex items-center justify-center py-16">
+                            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#0f56d9] border-t-transparent" />
+                        </div>
+                    ) : logs.length === 0 ? (
+                        <p className="text-center text-[13px] text-[#8a92a3] py-6">Aucune entrée trouvée.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {logs.map((log) => (
+                                <div
+                                    key={log.id}
+                                    className="flex flex-col gap-2 rounded-[10px] border border-[#e7ebf3] bg-white px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] font-medium ${ACTION_BADGE_CLASS[log.action] ?? "bg-[#f1f3f7] text-[#3d4354]"}`}>
+                                            {ACTION_LABELS[log.action] ?? log.action}
+                                        </Badge>
+                                        <div>
+                                            <p className="text-[12px] font-medium text-[#252c3b]">
+                                                {log.userName ?? "Système"} {log.auditableType ? `- ${log.auditableType.split("\\").pop()}` : ""}
+                                            </p>
+                                            <p className="text-[11px] text-[#7f8797]">{log.userEmail ?? "-"}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <p className="text-[11px] text-[#4a5162]">
+                                                {new Date(log.createdAt).toLocaleString("fr-FR")}
+                                            </p>
+                                            <p className="text-[10px] text-[#8a92a3]">{log.ipAddress ?? "-"}</p>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                            onClick={() => setSelected(log)}
+                                        >
+                                            <Eye className="h-3.5 w-3.5" />
+                                            Détail
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     )}
+
+                    <DataPagination
+                        page={page}
+                        totalPages={totalPages}
+                        total={total}
+                        currentCount={logs.length}
+                        pageSize={pageSize}
+                        onPageChange={setPage}
+                        onPageSizeChange={(size) => {
+                            setPageSize(size)
+                            setPage(1)
+                        }}
+                        disabled={loading}
+                        className="mt-4"
+                    />
                 </CardContent>
             </Card>
 
