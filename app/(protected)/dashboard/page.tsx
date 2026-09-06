@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Users, Building2, Briefcase, TrendingUp, FileText, Award, ExternalLink, Binary } from "lucide-react"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { PerformanceChart } from "@/components/dashboard/performance-chart"
@@ -10,6 +11,7 @@ import { dashboardService } from "@/lib/services/dashboard.service"
 import { analyticsService } from "@/lib/services/analytics.service"
 
 export default function Page() {
+    const router = useRouter()
     const [stats, setStats] = useState<{
         activeStudents: number
         partnerCompanies: number
@@ -56,10 +58,18 @@ export default function Page() {
     }, [])
 
     const quickActions = [
-        { icon: Binary, label: "Analyser un CV" },
-        { icon: Briefcase, label: "Nouvelle Offre" },
-        { icon: FileText, label: "Simulation Entretien" },
-        { icon: Award, label: "Ajouter Formation" },
+        { icon: Binary, label: "Analyser un CV", href: "/analyze-ai" },
+        { icon: Briefcase, label: "Nouvelle Offre", href: "/offres-emploi" },
+        { icon: FileText, label: "Simulation Entretien", href: "/simulation-entretiens" },
+        { icon: Award, label: "Ajouter Formation", href: "/formations" },
+    ]
+
+    // Portails partenaires : le bouton « Gérer » ouvre la console du partenaire.
+    const partners = [
+        { name: "Coursera", url: "https://www.coursera.org/business" },
+        { name: "Meta Blueprint", url: "https://www.facebook.com/business/learn" },
+        { name: "Google Cours", url: "https://grow.google/certificates/" },
+        { name: "IBM SkillsBuild", url: "https://skillsbuild.org/" },
     ]
 
     return (
@@ -126,6 +136,7 @@ export default function Page() {
                             <Button
                                 key={index}
                                 variant="ghost"
+                                onClick={() => router.push(action.href)}
                                 className="h-10 w-full justify-start rounded-lg border border-[#ebeef6] bg-[#f7f8fc] px-3 text-[11px] text-[#3d4456] hover:bg-[#eef2ff]"
                             >
                                 <action.icon className="h-3.5 w-3.5 text-[#4a5162]" />
@@ -183,10 +194,15 @@ export default function Page() {
                     </CardHeader>
                     <CardContent className="space-y-3 px-4 pb-4">
                         <div className="space-y-4">
-                            {["Coursera", "Meta Blueprint", "Google Cours", "IBM SkillsBuild"].map((partner) => (
-                                <div key={partner} className="flex items-center justify-between rounded-lg border border-[#eceff6] bg-[#f7f8fc] px-3 py-2">
-                                    <span className="text-[11px] text-[#323847]">{partner}</span>
-                                    <Button variant="outline" size="sm" className="h-7 rounded-md border-[#d5dae8] px-2 text-[11px] text-[#4a5060]">
+                            {partners.map((partner) => (
+                                <div key={partner.name} className="flex items-center justify-between rounded-lg border border-[#eceff6] bg-[#f7f8fc] px-3 py-2">
+                                    <span className="text-[11px] text-[#323847]">{partner.name}</span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.open(partner.url, "_blank", "noopener,noreferrer")}
+                                        className="h-7 rounded-md border-[#d5dae8] px-2 text-[11px] text-[#4a5060]"
+                                    >
                                         Gérer
                                         <ExternalLink className="ml-1 h-3 w-3" />
                                     </Button>

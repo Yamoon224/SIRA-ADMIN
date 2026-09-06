@@ -17,6 +17,8 @@ import {
     Mic,
     Eye,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { interviewService } from "@/lib/services/interview.service"
 import type { IInterviewSession } from "@/lib/@types/entities"
 
@@ -25,6 +27,8 @@ function getInitials(name: string) {
 }
 
 export default function Page() {
+    const router = useRouter()
+    const [detailSession, setDetailSession] = useState<IInterviewSession | null>(null)
     const [interviewStats, setInterviewStats] = useState<{
         todaySessions: number
         averageScore: number
@@ -135,6 +139,7 @@ export default function Page() {
 
                         <Button
                             variant="outline"
+                            onClick={() => router.push("/parametres")}
                             className="mt-5 h-9 w-full rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]"
                         >
                             <Mic className="h-3.5 w-3.5" />
@@ -215,6 +220,7 @@ export default function Page() {
 
                         <Button
                             variant="outline"
+                            onClick={() => router.push("/planification")}
                             className="mt-4 h-9 w-full rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]"
                         >
                             <Calendar className="h-3.5 w-3.5" />
@@ -263,6 +269,7 @@ export default function Page() {
                                         </Badge>
                                         <Button
                                             variant="outline"
+                                            onClick={() => setDetailSession(row)}
                                             className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
                                         >
                                             <Eye className="h-3.5 w-3.5" />
@@ -275,6 +282,34 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <DetailModal
+                isOpen={detailSession !== null}
+                onClose={() => setDetailSession(null)}
+                title={detailSession?.candidateName ?? ""}
+                subtitle={detailSession?.position}
+                fields={
+                    detailSession
+                        ? [
+                            {
+                                label: "Statut",
+                                value: detailSession.status === "COMPLETED" ? "Terminé" : detailSession.status === "ACTIVE" ? "En cours" : "Programmé",
+                            },
+                            { label: "Score", value: detailSession.score > 0 ? `${detailSession.score}/100` : "-" },
+                            { label: "Durée", value: `${detailSession.duration} min` },
+                            { label: "Email", value: detailSession.candidateEmail },
+                            {
+                                label: "Démarré le",
+                                value: detailSession.startTime
+                                    ? new Date(detailSession.startTime).toLocaleString("fr-FR")
+                                    : "-",
+                            },
+                            { label: "Poste visé", value: detailSession.position },
+                            { label: "Feedback", value: detailSession.feedback || "-", full: true },
+                        ]
+                        : []
+                }
+            />
         </div>
     )
 }

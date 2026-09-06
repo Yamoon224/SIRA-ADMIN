@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -53,6 +54,15 @@ export default function Page() {
         load()
     }, [])
 
+    // Le header pointe vers /parametres?tab=profile : on lit la query côté client
+    // pour éviter d'imposer une Suspense boundary à useSearchParams.
+    useEffect(() => {
+        const requested = new URLSearchParams(window.location.search).get("tab")
+        if (requested && TABS.some((tab) => tab.key === requested)) {
+            setActiveTab(requested)
+        }
+    }, [])
+
     const handleSave = async () => {
         setSaving(true)
         try {
@@ -63,8 +73,10 @@ export default function Page() {
                 timezone,
                 description,
             })
+            toast.success("Paramètres enregistrés")
         } catch (err) {
             console.error("[parametres] save error:", err)
+            toast.error("Enregistrement impossible")
         } finally {
             setSaving(false)
         }

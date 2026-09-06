@@ -17,6 +17,8 @@ import {
     Briefcase,
     Star,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { searchService, type ISearchFilters } from "@/lib/services/search.service"
 import type { IUser, IJobOffer } from "@/lib/@types/entities"
 
@@ -70,6 +72,7 @@ function toResultItem(raw: IUser | IJobOffer): ResultItem {
 const quickTags = ["Développeurs", "Designers", "Data Scientists", "Marketing", "Remote"]
 
 export default function Page() {
+    const router = useRouter()
     const [query, setQuery] = useState("")
     const [includeCandidates, setIncludeCandidates] = useState(true)
     const [includeOffers, setIncludeOffers] = useState(true)
@@ -114,9 +117,19 @@ export default function Page() {
             setTotalCount((res as any)?.meta?.total ?? arr.length)
         } catch (err) {
             console.error("[recherche] search error:", err)
+            toast.error("Recherche impossible")
             setResults([])
         } finally {
             setSearching(false)
+        }
+    }
+
+    /** Renvoie vers la page de gestion correspondant au résultat, pré-filtrée. */
+    const openResult = (item: ResultItem) => {
+        if (item.kind === "candidate") {
+            router.push(`/students?q=${encodeURIComponent(item.title)}`)
+        } else {
+            router.push(`/offres-emploi?entreprise=${encodeURIComponent(item.title)}`)
         }
     }
 
@@ -135,8 +148,10 @@ export default function Page() {
             a.download = "resultats-recherche.csv"
             a.click()
             URL.revokeObjectURL(url)
+            toast.success("Export CSV généré")
         } catch (err) {
             console.error("[recherche] export error:", err)
+            toast.error("Export impossible")
         }
     }
 
@@ -357,7 +372,10 @@ export default function Page() {
                                         </div>
 
                                         <div className="text-right">
-                                            <Button className="h-9 rounded-full bg-[#2f80ed] px-4 text-[12px] font-semibold text-white hover:bg-[#2575e3]">
+                                            <Button
+                                                onClick={() => openResult(item)}
+                                                className="h-9 rounded-full bg-[#2f80ed] px-4 text-[12px] font-semibold text-white hover:bg-[#2575e3]"
+                                            >
                                                 {item.actionLabel}
                                             </Button>
                                             {item.actionSubLabel ? (

@@ -14,8 +14,36 @@ import {
     CalendarDays,
     CheckCircle2,
 } from "lucide-react"
+import { toast } from "sonner"
+import { EventModal } from "@/components/modals/event-modal"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { planningService } from "@/lib/services/planning.service"
 import type { ICalendarEvent } from "@/lib/@types/entities"
+import { EventType } from "@/lib/@types/enums"
+
+type PlanningView = "day" | "week" | "month"
+
+/** Début (lundi) et fin de la fenêtre couverte par la vue courante. */
+function viewRange(view: PlanningView) {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const end = new Date(start)
+
+    if (view === "week") {
+        const weekday = (start.getDay() + 6) % 7 // lundi = 0
+        start.setDate(start.getDate() - weekday)
+        end.setTime(start.getTime())
+        end.setDate(start.getDate() + 6)
+    } else if (view === "month") {
+        start.setDate(1)
+        end.setTime(start.getTime())
+        end.setMonth(start.getMonth() + 1)
+        end.setDate(0)
+    }
+
+    end.setHours(23, 59, 59, 999)
+    return { start, end }
+}
 
 function formatTime(iso: string | Date) {
     const d = new Date(iso)
@@ -47,33 +75,67 @@ export default function Page() {
         completedEvents: number
         cancelledEvents: number
     } | null>(null)
+    const [view, setView] = useState<PlanningView>("day")
+    const [isEventModalOpen, setIsEventModalOpen] = useState(false)
+    const [eventDefaults, setEventDefaults] = useState<{ type?: EventType; title?: string }>({})
+    const [detailEvent, setDetailEvent] = useState<ICalendarEvent | null>(null)
     const [todayEvents, setTodayEvents] = useState<ICalendarEvent[]>([])
     const [upcomingEvents, setUpcomingEvents] = useState<ICalendarEvent[]>([])
     const [loading, setLoading] = useState(true)
 
-    const loadData = async () => {
+    const loadData = async (targetView: PlanningView = view) => {
+        // Vue jour : une requête ciblée. Vues semaine/mois : la liste complète
+        // (le backend renvoie tout sans paramètre `date`) filtrée localement.
         const today = new Date().toISOString().split("T")[0]
         try {
             const [statsRes, eventsRes, upcomingRes] = await Promise.all([
                 planningService.getStats(),
-                planningService.getEvents(today),
+                planningService.getEvents(targetView === "day" ? today : undefined),
                 planningService.getUpcomingEvents(5),
             ])
             setPlanStats((statsRes as any)?.data ?? statsRes)
             const evts = (eventsRes as any)?.data ?? eventsRes
-            setTodayEvents(Array.isArray(evts) ? evts : [])
+            const list: ICalendarEvent[] = Array.isArray(evts) ? evts : []
+            if (targetView === "day") {
+                setTodayEvents(list)
+            } else {
+                const { start, end } = viewRange(targetView)
+                setTodayEvents(
+                    list
+                        .filter((event) => {
+                            const time = new Date(event.startTime).getTime()
+                            return time >= start.getTime() && time <= end.getTime()
+                        })
+                        .sort(
+                            (a, b) =>
+                                new Date(a.startTime).getTime() - new Date(b.startTime).getTime(),
+                        ),
+                )
+            }
             const upc = (upcomingRes as any)?.data ?? upcomingRes
             setUpcomingEvents(Array.isArray(upc) ? upc : [])
         } catch (err) {
             console.error("[planification] load error:", err)
+            toast.error("Chargement du planning impossible")
         } finally {
             setLoading(false)
         }
     }
 
     useEffect(() => {
-        loadData()
+        loadData("day")
     }, [])
+
+    const switchView = async (next: PlanningView) => {
+        setView(next)
+        setLoading(true)
+        await loadData(next)
+    }
+
+    const openEventModal = (defaults: { type?: EventType; title?: string } = {}) => {
+        setEventDefaults(defaults)
+        setIsEventModalOpen(true)
+    }
 
     const statCards = [
         { title: "Événements Aujourd'hui", value: planStats ? String(planStats.totalEvents) : "-", icon: Calendar },
@@ -92,6 +154,14 @@ export default function Page() {
 
     const todayLabel = new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
 
+    const { start: rangeStart, end: rangeEnd } = viewRange(view)
+    const viewLabel =
+        view === "day"
+            ? `Aujourd'hui - ${todayLabel}`
+            : view === "week"
+                ? `Semaine du ${rangeStart.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} au ${rangeEnd.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`
+                : rangeStart.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+
     return (
         <div className="space-y-4">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -102,7 +172,10 @@ export default function Page() {
                     </p>
                 </div>
 
-                <Button className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]">
+                <Button
+                    className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]"
+                    onClick={() => openEventModal()}
+                >
                     <Plus className="h-3.5 w-3.5" />
                     Nouvel Événement
                 </Button>
@@ -130,20 +203,30 @@ export default function Page() {
                         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <h2 className="flex items-center gap-2 text-[20px] font-semibold text-[#242a38] sm:text-[24px] lg:text-[30px]">
                                 <CalendarDays className="h-4 w-4" />
-                                Aujourd'hui - {todayLabel}
+                                {viewLabel}
                             </h2>
                             <div className="flex items-center gap-2">
-                                <Button variant="outline" className="h-8 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[11px] text-[#4d5567]">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => switchView(view === "day" ? "week" : "day")}
+                                    className={`h-8 rounded-lg px-3 text-[11px] ${view === "week" ? "border-[#bcd3fb] bg-[#eef4ff] text-[#2f80ed]" : "border-[#eceff5] bg-[#f8f9fc] text-[#4d5567]"}`}
+                                >
                                     Vue Semaine
                                 </Button>
-                                <Button variant="outline" className="h-8 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[11px] text-[#4d5567]">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => switchView(view === "day" ? "month" : "day")}
+                                    className={`h-8 rounded-lg px-3 text-[11px] ${view === "month" ? "border-[#bcd3fb] bg-[#eef4ff] text-[#2f80ed]" : "border-[#eceff5] bg-[#f8f9fc] text-[#4d5567]"}`}
+                                >
                                     Vue Mois
                                 </Button>
                             </div>
                         </div>
 
                         {todayEvents.length === 0 ? (
-                            <p className="text-center text-[13px] text-[#8a92a3] py-6">Aucun événement aujourd'hui.</p>
+                            <p className="text-center text-[13px] text-[#8a92a3] py-6">
+                                {view === "day" ? "Aucun événement aujourd'hui." : "Aucun événement sur cette période."}
+                            </p>
                         ) : (
                             <div className="space-y-3">
                                 {todayEvents.map((event) => (
@@ -185,7 +268,13 @@ export default function Page() {
                                                 <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${STATUS_CLASS[event.status] ?? "bg-[#edf0f6] text-[#3d4354]"}`}>
                                                     {STATUS_LABEL[event.status] ?? event.status}
                                                 </Badge>
-                                                <p className="mt-2 text-[11px] text-[#4d5567]">Détails</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDetailEvent(event)}
+                                                    className="mt-2 text-[11px] text-[#2f80ed] hover:underline"
+                                                >
+                                                    Détails
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -234,9 +323,25 @@ export default function Page() {
                         <CardContent className="px-4 py-4">
                             <h2 className="mb-3 text-[24px] font-semibold text-[#242a38]">Actions Rapides</h2>
                             <div className="space-y-2">
-                                <QuickAction icon={Video} label="Programmer Entretien" />
-                                <QuickAction icon={Bell} label="Rappel Automatique" />
-                                <QuickAction icon={Calendar} label="Bloquer Créneau" />
+                                <QuickAction
+                                    icon={Video}
+                                    label="Programmer Entretien"
+                                    onClick={() => openEventModal({ type: EventType.ENTRETIEN })}
+                                />
+                                <QuickAction
+                                    icon={Bell}
+                                    label="Rappel Automatique"
+                                    onClick={() =>
+                                        openEventModal({ type: EventType.REUNION, title: "Rappel automatique" })
+                                    }
+                                />
+                                <QuickAction
+                                    icon={Calendar}
+                                    label="Bloquer Créneau"
+                                    onClick={() =>
+                                        openEventModal({ type: EventType.REUNION, title: "Créneau bloqué" })
+                                    }
+                                />
                             </div>
                         </CardContent>
                     </Card>
@@ -262,6 +367,75 @@ export default function Page() {
                     </Card>
                 </div>
             </div>
+
+            <EventModal
+                isOpen={isEventModalOpen}
+                onClose={() => setIsEventModalOpen(false)}
+                onCreated={() => loadData()}
+                defaultType={eventDefaults.type}
+                defaultTitle={eventDefaults.title}
+            />
+
+            <DetailModal
+                isOpen={detailEvent !== null}
+                onClose={() => setDetailEvent(null)}
+                title={detailEvent?.title ?? ""}
+                subtitle={detailEvent?.type}
+                fields={
+                    detailEvent
+                        ? [
+                            { label: "Statut", value: STATUS_LABEL[detailEvent.status] ?? detailEvent.status },
+                            { label: "Type", value: detailEvent.type },
+                            {
+                                label: "Début",
+                                value: new Date(detailEvent.startTime).toLocaleString("fr-FR"),
+                            },
+                            {
+                                label: "Fin",
+                                value: detailEvent.endTime
+                                    ? new Date(detailEvent.endTime).toLocaleString("fr-FR")
+                                    : "-",
+                            },
+                            { label: "Lieu", value: detailEvent.location ?? "-" },
+                            {
+                                label: "Durée",
+                                value: detailEvent.endTime
+                                    ? durationMinutes(detailEvent.startTime, detailEvent.endTime)
+                                    : "-",
+                            },
+                            {
+                                label: "Participants",
+                                value: Array.isArray(detailEvent.participants)
+                                    ? detailEvent.participants.join(", ") || "-"
+                                    : "-",
+                                full: true,
+                            },
+                        ]
+                        : []
+                }
+                footer={
+                    detailEvent ? (
+                        <Button
+                            variant="outline"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={async () => {
+                                if (!window.confirm(`Supprimer l'événement « ${detailEvent.title} » ?`)) return
+                                try {
+                                    await planningService.deleteEvent(detailEvent.id)
+                                    toast.success("Événement supprimé")
+                                    setDetailEvent(null)
+                                    await loadData()
+                                } catch (err) {
+                                    console.error("[planification] delete error:", err)
+                                    toast.error("Suppression impossible")
+                                }
+                            }}
+                        >
+                            Supprimer
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }
@@ -269,11 +443,16 @@ export default function Page() {
 type QuickActionProps = {
     icon: React.ComponentType<{ className?: string }>
     label: string
+    onClick: () => void
 }
 
-function QuickAction({ icon: Icon, label }: QuickActionProps) {
+function QuickAction({ icon: Icon, label, onClick }: QuickActionProps) {
     return (
-        <Button variant="outline" className="h-9 w-full justify-start rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[12px] text-[#41495a] hover:bg-[#f1f4fa]">
+        <Button
+            variant="outline"
+            onClick={onClick}
+            className="h-9 w-full justify-start rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[12px] text-[#41495a] hover:bg-[#f1f4fa]"
+        >
             <Icon className="h-3.5 w-3.5" />
             {label}
         </Button>

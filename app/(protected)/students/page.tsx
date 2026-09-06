@@ -12,20 +12,39 @@ import {
     TrendingUp,
     Users,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { FilterMenu, PERIOD_OPTIONS, matchesPeriod } from "@/components/ui/filter-menu"
 import { AddStudentModal } from "@/components/modals/add-student-modal"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { MessageModal } from "@/components/modals/message-modal"
 import { studentsService } from "@/lib/services/students.service"
+import { exportToCSV } from "@/lib/export-utils"
 import type { IUser } from "@/lib/@types/entities"
+
+const STATUS_OPTIONS = [
+    { value: "all", label: "Tous les statuts" },
+    { value: "ACTIVE", label: "Actifs" },
+    { value: "INACTIVE", label: "Inactifs" },
+]
 
 function getInitials(name: string) {
     return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
 export default function Page() {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [periodFilter, setPeriodFilter] = useState("all")
+    const [selectedIds, setSelectedIds] = useState<string[]>([])
+    const [detailStudent, setDetailStudent] = useState<IUser | null>(null)
+    const [isMessageOpen, setIsMessageOpen] = useState(false)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [students, setStudents] = useState<IUser[]>([])
     const [studentStats, setStudentStats] = useState<{
@@ -54,27 +73,77 @@ export default function Page() {
 
     useEffect(() => {
         loadData()
+        // Lien « Voir Profil » depuis la recherche avancée.
+        const q = new URLSearchParams(window.location.search).get("q")
+        if (q) setSearchTerm(q)
     }, [])
 
     const filteredStudents = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase()
-        if (!normalized) return students
-        return students.filter((s) =>
-            [s.name, s.email].some((v) => (v ?? "").toLowerCase().includes(normalized))
-        )
-    }, [searchTerm, students])
+        return students.filter((s) => {
+            const matchesSearch =
+                !normalized || [s.name, s.email].some((v) => (v ?? "").toLowerCase().includes(normalized))
+            const matchesStatus = statusFilter === "all" || s.status === statusFilter
+            return matchesSearch && matchesStatus && matchesPeriod(s.registrationDate, periodFilter)
+        })
+    }, [searchTerm, statusFilter, periodFilter, students])
+
+    /** Candidats visés par les actions en lot : la sélection, sinon la liste filtrée. */
+    const targetedStudents = useMemo(
+        () =>
+            selectedIds.length > 0
+                ? filteredStudents.filter((s) => selectedIds.includes(s.id))
+                : filteredStudents,
+        [filteredStudents, selectedIds],
+    )
+
+    const allVisibleSelected =
+        filteredStudents.length > 0 && filteredStudents.every((s) => selectedIds.includes(s.id))
+
+    const toggleStudent = (id: string) => {
+        setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+    }
+
+    const toggleAllVisible = () => {
+        setSelectedIds(allVisibleSelected ? [] : filteredStudents.map((s) => s.id))
+    }
 
     const handleAddStudent = async (studentData: any) => {
         try {
             await studentsService.createStudent({ ...studentData, password: studentData.password || "goriya123" })
             setIsAddModalOpen(false)
+            toast.success("Candidat créé")
             await loadData()
         } catch (err) {
             console.error("[students] create error:", err)
+            toast.error("Création impossible")
         }
     }
 
     const handleExport = async () => {
+        // Sélection ou filtre actif : on exporte exactement ce que l'admin voit.
+        const isSubset =
+            selectedIds.length > 0 || filteredStudents.length !== students.length
+        if (isSubset) {
+            if (targetedStudents.length === 0) {
+                toast.error("Aucun candidat à exporter")
+                return
+            }
+            exportToCSV(
+                targetedStudents.map((s) => ({
+                    nom: s.name,
+                    email: s.email,
+                    role: s.role,
+                    statut: s.status,
+                    entreprise: s.company?.name ?? "",
+                    inscription: new Date(s.registrationDate).toLocaleDateString("fr-FR"),
+                })),
+                "candidats",
+            )
+            toast.success(`${targetedStudents.length} candidat(s) exporté(s)`)
+            return
+        }
+
         try {
             const result = await studentsService.exportCSV()
             const blob = new Blob([result as any], { type: "text/csv" })
@@ -84,9 +153,19 @@ export default function Page() {
             a.download = "candidats.csv"
             a.click()
             URL.revokeObjectURL(url)
+            toast.success("Export CSV généré")
         } catch (err) {
             console.error("[students] export error:", err)
+            toast.error("Export impossible")
         }
+    }
+
+    const handleOpenMessage = () => {
+        if (targetedStudents.length === 0) {
+            toast.error("Aucun candidat sélectionné")
+            return
+        }
+        setIsMessageOpen(true)
     }
 
     if (loading) {
@@ -166,14 +245,21 @@ export default function Page() {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <Filter className="h-3.5 w-3.5" />
-                                Filtrer
-                            </Button>
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <Calendar className="h-3.5 w-3.5" />
-                                Date
-                            </Button>
+                            <FilterMenu
+                                label="Filtrer"
+                                icon={Filter}
+                                value={statusFilter}
+                                options={STATUS_OPTIONS}
+                                onChange={setStatusFilter}
+                            />
+                            <FilterMenu
+                                label="Date"
+                                icon={Calendar}
+                                value={periodFilter}
+                                options={PERIOD_OPTIONS}
+                                onChange={setPeriodFilter}
+                                align="end"
+                            />
                         </div>
                     </div>
                 </CardContent>
@@ -181,7 +267,15 @@ export default function Page() {
 
             <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
                 <CardContent className="px-4 py-4">
-                    <h2 className="mb-4 text-[24px] font-semibold text-[#242a38]">Liste des Candidats</h2>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="text-[24px] font-semibold text-[#242a38]">Liste des Candidats</h2>
+                        {filteredStudents.length > 0 && (
+                            <label className="flex cursor-pointer items-center gap-2 text-[11px] text-[#4d5567]">
+                                <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} />
+                                Tout sélectionner ({selectedIds.length})
+                            </label>
+                        )}
+                    </div>
 
                     {filteredStudents.length === 0 ? (
                         <p className="text-center text-[13px] text-[#8a92a3] py-6">Aucun candidat trouvé.</p>
@@ -193,6 +287,11 @@ export default function Page() {
                                     className="flex flex-col gap-3 rounded-[10px] border border-[#e7ebf3] bg-white px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
                                 >
                                     <div className="flex items-center gap-3">
+                                        <Checkbox
+                                            checked={selectedIds.includes(student.id)}
+                                            onCheckedChange={() => toggleStudent(student.id)}
+                                            aria-label={`Sélectionner ${student.name}`}
+                                        />
                                         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#4e8df3] to-[#6b47e8] text-[12px] font-semibold text-white">
                                             {getInitials(student.name)}
                                         </div>
@@ -220,7 +319,11 @@ export default function Page() {
                                             <p className="text-[10px] text-[#8a92a3]">Inscrit le</p>
                                         </div>
 
-                                        <Button variant="outline" className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                            onClick={() => setDetailStudent(student)}
+                                        >
                                             <Eye className="h-3.5 w-3.5" />
                                             Voir Profil
                                         </Button>
@@ -234,7 +337,11 @@ export default function Page() {
 
             <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
                 <CardContent className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-                    <p className="text-[12px] text-[#8a92a3]">Sélectionne des candidats pour des actions en lot</p>
+                    <p className="text-[12px] text-[#8a92a3]">
+                        {selectedIds.length > 0
+                            ? `${selectedIds.length} candidat(s) sélectionné(s)`
+                            : "Sélectionne des candidats pour des actions en lot (sinon la liste filtrée est utilisée)"}
+                    </p>
                     <div className="flex flex-wrap gap-2 lg:justify-end">
                         <Button
                             variant="outline"
@@ -243,10 +350,17 @@ export default function Page() {
                         >
                             Exporter CSV
                         </Button>
-                        <Button variant="outline" className="h-9 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[11px] text-[#4d5567] hover:bg-[#f1f4fa]">
+                        <Button
+                            variant="outline"
+                            className="h-9 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[11px] text-[#4d5567] hover:bg-[#f1f4fa]"
+                            onClick={handleOpenMessage}
+                        >
                             Envoyer Message
                         </Button>
-                        <Button className="h-9 rounded-lg border border-[#2f80ed] bg-white px-3 text-[11px] text-[#2f80ed] hover:bg-[#eef5ff]">
+                        <Button
+                            className="h-9 rounded-lg border border-[#2f80ed] bg-white px-3 text-[11px] text-[#2f80ed] hover:bg-[#eef5ff]"
+                            onClick={() => router.push("/scoring-ai")}
+                        >
                             <Sparkles className="h-3.5 w-3.5" />
                             Analyse Goriya
                         </Button>
@@ -255,6 +369,48 @@ export default function Page() {
             </Card>
 
             <AddStudentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddStudent} />
+
+            <MessageModal
+                isOpen={isMessageOpen}
+                onClose={() => setIsMessageOpen(false)}
+                recipients={targetedStudents.map((s) => ({ id: s.id, name: s.name }))}
+            />
+
+            <DetailModal
+                isOpen={detailStudent !== null}
+                onClose={() => setDetailStudent(null)}
+                title={detailStudent?.name ?? ""}
+                subtitle={detailStudent?.email}
+                fields={
+                    detailStudent
+                        ? [
+                            { label: "Rôle", value: detailStudent.role },
+                            { label: "Statut", value: detailStudent.status === "ACTIVE" ? "Actif" : "Inactif" },
+                            { label: "Email", value: detailStudent.email },
+                            {
+                                label: "Inscrit le",
+                                value: new Date(detailStudent.registrationDate).toLocaleDateString("fr-FR"),
+                            },
+                            { label: "Entreprise", value: detailStudent.company?.name ?? "-" },
+                            { label: "Identifiant", value: detailStudent.id, full: true },
+                        ]
+                        : []
+                }
+                footer={
+                    detailStudent ? (
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setSelectedIds([detailStudent.id])
+                                setDetailStudent(null)
+                                setIsMessageOpen(true)
+                            }}
+                        >
+                            Envoyer un message
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }

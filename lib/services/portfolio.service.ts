@@ -44,6 +44,20 @@ export const portfolioService = {
         })
     },
 
+    createPortfolio: async (data: {
+        title: string
+        description: string
+        skills: string[]
+        createdDate: string
+        userId: string
+    }) => {
+        return apiRequest<ApiResponse<IPortfolio>>({
+            endpoint: "/portfolios",
+            method: "POST",
+            data,
+        })
+    },
+
     featurePortfolio: async (id: string, featured: boolean) => {
         return apiRequest<ApiResponse<IPortfolio>>({
             endpoint: `/admin/portfolios/${id}/feature`,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
     Briefcase,
     Calendar,
@@ -16,11 +16,15 @@ import {
     Workflow,
     Sparkles,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { FilterMenu, PERIOD_OPTIONS, matchesPeriod, optionsFrom } from "@/components/ui/filter-menu"
 import { AddJobModal } from "@/components/modals/add-job-modal"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { jobService } from "@/lib/services/job.service"
 import type { IJobOffer } from "@/lib/@types/entities"
 import { JobStatus } from "@/lib/@types/enums"
@@ -40,7 +44,13 @@ const STATUS_LABELS: Record<JobStatus, string> = {
 const BAR_COLORS = ["bg-[#6366f1]", "bg-[#6366f1]", "bg-[#27c48f]", "bg-[#ef9435]", "bg-[#2b78f6]"]
 
 export default function Page() {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
+    const [typeFilter, setTypeFilter] = useState("all")
+    const [locationFilter, setLocationFilter] = useState("all")
+    const [periodFilter, setPeriodFilter] = useState("all")
+    const [statusFilter, setStatusFilter] = useState("all")
+    const [detailJob, setDetailJob] = useState<IJobOffer | null>(null)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [jobs, setJobs] = useState<IJobOffer[]>([])
     const [sectors, setSectors] = useState<Array<{ name: string; count: number; percentage: number }>>([])
@@ -52,6 +62,7 @@ export default function Page() {
         totalApplicants: number
     } | null>(null)
     const [loading, setLoading] = useState(true)
+    const jobListRef = useRef<HTMLDivElement>(null)
 
     const loadData = async () => {
         try {
@@ -74,20 +85,59 @@ export default function Page() {
 
     useEffect(() => {
         loadData()
+        // Lien « Voir ses offres » depuis la fiche entreprise.
+        const company = new URLSearchParams(window.location.search).get("entreprise")
+        if (company) setSearchTerm(company)
     }, [])
+
+    const typeOptions = useMemo(() => optionsFrom(jobs, (job) => job.type, "Tous les contrats"), [jobs])
+    const locationOptions = useMemo(
+        () => optionsFrom(jobs, (job) => job.location, "Toutes les localisations"),
+        [jobs],
+    )
 
     const filteredJobs = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase()
-        if (!normalized) return jobs
-        return jobs.filter((job) =>
-            [job.title, job.company?.name ?? "", job.location].some((v) =>
-                v.toLowerCase().includes(normalized)
+        return jobs.filter((job) => {
+            const matchesSearch =
+                !normalized ||
+                [job.title, job.company?.name ?? "", job.location].some((v) =>
+                    v.toLowerCase().includes(normalized),
+                )
+            const matchesType = typeFilter === "all" || job.type === typeFilter
+            const matchesLocation = locationFilter === "all" || job.location === locationFilter
+            const matchesStatus = statusFilter === "all" || job.status === statusFilter
+            return (
+                matchesSearch &&
+                matchesType &&
+                matchesLocation &&
+                matchesStatus &&
+                matchesPeriod(job.publishDate, periodFilter)
             )
-        )
-    }, [searchTerm, jobs])
+        })
+    }, [searchTerm, typeFilter, locationFilter, periodFilter, statusFilter, jobs])
+
+    /** « Offres Expirantes » : bascule la liste sur les annonces fermées. */
+    const showExpiringJobs = () => {
+        setStatusFilter(JobStatus.CLOSED)
+        setSearchTerm("")
+        setTypeFilter("all")
+        setLocationFilter("all")
+        setPeriodFilter("all")
+        jobListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+        toast.info("Filtre appliqué : offres fermées")
+    }
+
+    const managementActions = [
+        { label: "Créer une Nouvelle Offre", run: () => setIsAddModalOpen(true) },
+        { label: "Offres Expirantes", run: showExpiringJobs },
+        { label: "Rapport de Performance", run: () => router.push("/analytics") },
+        { label: "Gérer les Candidatures", run: () => router.push("/candidatures") },
+    ]
 
     const handleAddJob = async () => {
         setIsAddModalOpen(false)
+        toast.success("Offre enregistrée")
         await loadData()
     }
 
@@ -169,25 +219,47 @@ export default function Page() {
                                 className="h-10 rounded-lg border-[#edf0f5] bg-[#f8f9fc] pl-9 text-[12px] text-[#313847] shadow-none"
                             />
                         </div>
-                        <div className="flex gap-2">
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <Filter className="h-3.5 w-3.5" />
-                                Type de contrat
-                            </Button>
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <MapPin className="h-3.5 w-3.5" />
-                                Localisation
-                            </Button>
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <Calendar className="h-3.5 w-3.5" />
-                                Date de publication
-                            </Button>
+                        <div className="flex flex-wrap gap-2">
+                            <FilterMenu
+                                label="Type de contrat"
+                                icon={Filter}
+                                value={typeFilter}
+                                options={typeOptions}
+                                onChange={setTypeFilter}
+                            />
+                            <FilterMenu
+                                label="Localisation"
+                                icon={MapPin}
+                                value={locationFilter}
+                                options={locationOptions}
+                                onChange={setLocationFilter}
+                            />
+                            <FilterMenu
+                                label="Date de publication"
+                                icon={Calendar}
+                                value={periodFilter}
+                                options={PERIOD_OPTIONS}
+                                onChange={setPeriodFilter}
+                                align="end"
+                            />
+                            <FilterMenu
+                                label="Statut"
+                                value={statusFilter}
+                                options={[
+                                    { value: "all", label: "Tous les statuts" },
+                                    { value: JobStatus.ACTIVE, label: "Active" },
+                                    { value: JobStatus.CLOSED, label: "Fermée" },
+                                    { value: JobStatus.DRAFT, label: "Brouillon" },
+                                ]}
+                                onChange={setStatusFilter}
+                                align="end"
+                            />
                         </div>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
+            <Card ref={jobListRef} className="rounded-[10px] border border-[#d9dce6] bg-white py-0 shadow-none">
                 <CardContent className="px-4 py-4">
                     <h2 className="mb-4 text-[24px] font-semibold text-[#242a38]">Liste des Offres d'Emploi</h2>
 
@@ -234,7 +306,11 @@ export default function Page() {
                                         <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${STATUS_CLASSES[job.status] ?? ""}`}>
                                             {STATUS_LABELS[job.status] ?? job.status}
                                         </Badge>
-                                        <Button variant="outline" className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                            onClick={() => setDetailJob(job)}
+                                        >
                                             <Eye className="h-3.5 w-3.5" />
                                             Voir Détails
                                         </Button>
@@ -275,22 +351,21 @@ export default function Page() {
                     <CardContent className="px-4 py-4">
                         <h2 className="mb-4 text-[24px] font-semibold text-[#242a38]">Actions de Gestion</h2>
                         <div className="space-y-2">
-                            {[
-                                "Créer une Nouvelle Offre",
-                                "Offres Expirantes",
-                                "Rapport de Performance",
-                                "Gérer les Candidatures",
-                            ].map((label) => (
+                            {managementActions.map((action) => (
                                 <Button
-                                    key={label}
+                                    key={action.label}
                                     variant="outline"
+                                    onClick={action.run}
                                     className="h-9 w-full justify-start rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[12px] text-[#41495a] hover:bg-[#f1f4fa]"
                                 >
                                     <Workflow className="h-3.5 w-3.5" />
-                                    {label}
+                                    {action.label}
                                 </Button>
                             ))}
-                            <Button className="h-9 w-full justify-start rounded-lg border border-[#2f80ed] bg-white px-3 text-[12px] text-[#2f80ed] hover:bg-[#eef5ff]">
+                            <Button
+                                onClick={() => router.push("/matching-ai")}
+                                className="h-9 w-full justify-start rounded-lg border border-[#2f80ed] bg-white px-3 text-[12px] text-[#2f80ed] hover:bg-[#eef5ff]"
+                            >
                                 <Sparkles className="h-3.5 w-3.5" />
                                 Matching IA Automatique
                             </Button>
@@ -308,7 +383,11 @@ export default function Page() {
                             <p className="mt-1 text-[11px] text-[#8a7b69]">
                                 {jobStats?.closed ?? 0} offres fermées. Contacte les entreprises pour renouveler ou prolonger.
                             </p>
-                            <Button variant="outline" className="mt-2 h-7 rounded-full border-[#f0c28e] bg-white px-3 text-[10px] text-[#cb7b1b] hover:bg-[#fff5e8]">
+                            <Button
+                                variant="outline"
+                                onClick={showExpiringJobs}
+                                className="mt-2 h-7 rounded-full border-[#f0c28e] bg-white px-3 text-[10px] text-[#cb7b1b] hover:bg-[#fff5e8]"
+                            >
                                 Voir les Offres Expirantes
                             </Button>
                         </div>
@@ -317,6 +396,49 @@ export default function Page() {
             </Card>
 
             <AddJobModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddJob} />
+
+            <DetailModal
+                isOpen={detailJob !== null}
+                onClose={() => setDetailJob(null)}
+                title={detailJob?.title ?? ""}
+                subtitle={detailJob?.company?.name ?? undefined}
+                fields={
+                    detailJob
+                        ? [
+                            { label: "Statut", value: STATUS_LABELS[detailJob.status] ?? detailJob.status },
+                            { label: "Type de contrat", value: detailJob.type },
+                            { label: "Expérience", value: detailJob.experience },
+                            { label: "Localisation", value: detailJob.location },
+                            { label: "Salaire", value: detailJob.salary },
+                            { label: "Candidatures", value: detailJob.applicants },
+                            {
+                                label: "Publiée le",
+                                value: new Date(detailJob.publishDate).toLocaleDateString("fr-FR"),
+                            },
+                            {
+                                label: "Clôture",
+                                value: detailJob.endDate
+                                    ? new Date(detailJob.endDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                            { label: "Description", value: detailJob.description, full: true },
+                            {
+                                label: "Prérequis",
+                                value: (detailJob.requirements ?? []).join(", ") || "-",
+                                full: true,
+                            },
+                            { label: "Avantages", value: detailJob.benefits || "-", full: true },
+                        ]
+                        : []
+                }
+                footer={
+                    detailJob ? (
+                        <Button variant="outline" onClick={() => router.push("/candidatures")}>
+                            Voir les candidatures
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }

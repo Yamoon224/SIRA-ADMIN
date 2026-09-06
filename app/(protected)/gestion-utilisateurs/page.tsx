@@ -7,9 +7,33 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Filter, UserPlus, Users, Building2, UserCheck, UserX, MoreHorizontal } from "lucide-react"
+import { Filter, UserPlus, Users, Building2, UserCheck, UserX, MoreHorizontal, Eye, Trash2, Shield } from "lucide-react"
+import { toast } from "sonner"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { FilterMenu } from "@/components/ui/filter-menu"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { AddUserModal } from "@/components/modals/add-user-modal"
 import { userService } from "@/lib/services/user.service"
+import { exportToCSV } from "@/lib/export-utils"
 import type { IUser } from "@/lib/@types/entities"
+
+const ROLE_LABELS: Record<string, string> = {
+    ADMIN: "Administrateur",
+    ENTREPRISE: "Entreprise",
+    USER: "Utilisateur",
+}
+
+const STATUS_OPTIONS = [
+    { value: "all", label: "Tous les statuts" },
+    { value: "ACTIVE", label: "Actifs" },
+    { value: "INACTIVE", label: "Inactifs" },
+]
 
 export default function Page() {
     const [stats, setStats] = useState<{
@@ -21,7 +45,10 @@ export default function Page() {
     const [users, setUsers] = useState<IUser[]>([])
     const [searchQuery, setSearchQuery] = useState("")
     const [roleFilter, setRoleFilter] = useState<string>("all")
+    const [statusFilter, setStatusFilter] = useState<string>("all")
     const [loading, setLoading] = useState(true)
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [detailUser, setDetailUser] = useState<IUser | null>(null)
 
     useEffect(() => {
         loadData()
@@ -47,9 +74,75 @@ export default function Page() {
         try {
             await userService.updateUserStatus(userId, newStatus as any)
             setUsers(users.map((user) => (user.id === userId ? { ...user, status: newStatus as any } : user)))
+            toast.success(newStatus === "ACTIVE" ? "Compte réactivé" : "Compte désactivé")
         } catch (error) {
             console.error("Erreur lors de la mise à jour:", error)
+            toast.error("Mise à jour impossible")
         }
+    }
+
+    const handleAddUser = async (data: { name: string; email: string; role: string; status: string }) => {
+        const roleMap: Record<string, string> = {
+            Candidat: "USER",
+            Entreprise: "ENTREPRISE",
+            Admin: "ADMIN",
+            RH: "ADMIN",
+        }
+        try {
+            await userService.createUser({
+                name: data.name,
+                email: data.email,
+                role: (roleMap[data.role] ?? "USER") as any,
+                status: (data.status === "Actif" ? "ACTIVE" : "INACTIVE") as any,
+                password: "goriya123",
+            } as any)
+            toast.success("Utilisateur créé")
+            await loadData()
+        } catch (error) {
+            console.error("Erreur lors de la création:", error)
+            toast.error("Création impossible")
+        }
+    }
+
+    const handleRoleChange = async (user: IUser, role: "ADMIN" | "USER" | "ENTREPRISE") => {
+        try {
+            await userService.updateUser(user.id, { role } as any)
+            setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: role as any } : u)))
+            toast.success(`Rôle mis à jour : ${ROLE_LABELS[role]}`)
+        } catch (error) {
+            console.error("Erreur lors du changement de rôle:", error)
+            toast.error("Changement de rôle impossible")
+        }
+    }
+
+    const handleDelete = async (user: IUser) => {
+        if (!window.confirm(`Supprimer définitivement le compte de ${user.name} ?`)) return
+        try {
+            await userService.deleteUser(user.id)
+            setUsers((prev) => prev.filter((u) => u.id !== user.id))
+            toast.success("Utilisateur supprimé")
+        } catch (error) {
+            console.error("Erreur lors de la suppression:", error)
+            toast.error("Suppression impossible")
+        }
+    }
+
+    const handleExport = () => {
+        if (filteredUsers.length === 0) {
+            toast.error("Aucun utilisateur à exporter")
+            return
+        }
+        exportToCSV(
+            filteredUsers.map((user) => ({
+                nom: user.name,
+                email: user.email,
+                role: ROLE_LABELS[user.role] ?? user.role,
+                statut: user.status,
+                inscription: new Date(user.registrationDate).toLocaleDateString("fr-FR"),
+            })),
+            "utilisateurs",
+        )
+        toast.success("Export CSV généré")
     }
 
     const filteredUsers = users.filter((user) => {
@@ -61,7 +154,8 @@ export default function Page() {
             (roleFilter === "admin" && user.role === "ADMIN") ||
             (roleFilter === "user" && user.role === "USER") ||
             (roleFilter === "enterprise" && user.role === "ENTREPRISE")
-        return matchesSearch && matchesRole
+        const matchesStatus = statusFilter === "all" || user.status === statusFilter
+        return matchesSearch && matchesRole && matchesStatus
     })
 
     if (loading) {
@@ -75,7 +169,7 @@ export default function Page() {
                     <h1 className="text-2xl font-bold text-gray-900">Gestion des Utilisateurs</h1>
                     <p className="text-gray-600">Administrer tous les comptes utilisateurs de la plateforme</p>
                 </div>
-                <Button>
+                <Button onClick={() => setIsAddModalOpen(true)}>
                     <UserPlus className="w-4 h-4 mr-2" />
                     Ajouter Utilisateur
                 </Button>
@@ -163,9 +257,17 @@ export default function Page() {
                                 <SelectItem value="enterprise">Entreprise</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" className="w-full sm:w-auto">
-                            <Filter className="w-4 h-4 mr-2" />
-                            Filtres
+                        <FilterMenu
+                            label="Filtres"
+                            icon={Filter}
+                            value={statusFilter}
+                            options={STATUS_OPTIONS}
+                            onChange={setStatusFilter}
+                            align="end"
+                            className="h-9 w-full sm:w-auto"
+                        />
+                        <Button variant="outline" className="w-full sm:w-auto" onClick={handleExport}>
+                            Exporter CSV
                         </Button>
                     </div>
                 </CardContent>
@@ -251,9 +353,30 @@ export default function Page() {
                                                         <UserCheck className="w-4 h-4" />
                                                     </Button>
                                                 )}
-                                                <Button size="sm" variant="outline">
-                                                    <MoreHorizontal className="w-4 h-4" />
-                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button size="sm" variant="outline">
+                                                            <MoreHorizontal className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-52">
+                                                        <DropdownMenuItem onClick={() => setDetailUser(user)}>
+                                                            <Eye className="w-4 h-4" /> Voir les détails
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        {(["ADMIN", "ENTREPRISE", "USER"] as const)
+                                                            .filter((role) => role !== user.role)
+                                                            .map((role) => (
+                                                                <DropdownMenuItem key={role} onClick={() => handleRoleChange(user, role)}>
+                                                                    <Shield className="w-4 h-4" /> Passer en {ROLE_LABELS[role]}
+                                                                </DropdownMenuItem>
+                                                            ))}
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem variant="destructive" onClick={() => handleDelete(user)}>
+                                                            <Trash2 className="w-4 h-4" /> Supprimer
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                         </td>
                                     </tr>
@@ -263,6 +386,34 @@ export default function Page() {
                     </div>
                 </CardContent>
             </Card>
+
+            <AddUserModal
+                isOpen={isAddModalOpen}
+                onClose={() => setIsAddModalOpen(false)}
+                onSubmit={handleAddUser}
+            />
+
+            <DetailModal
+                isOpen={detailUser !== null}
+                onClose={() => setDetailUser(null)}
+                title={detailUser?.name ?? ""}
+                subtitle={detailUser?.email}
+                fields={
+                    detailUser
+                        ? [
+                            { label: "Rôle", value: ROLE_LABELS[detailUser.role] ?? detailUser.role },
+                            { label: "Statut", value: detailUser.status === "ACTIVE" ? "Actif" : "Inactif" },
+                            { label: "Email", value: detailUser.email },
+                            {
+                                label: "Inscrit le",
+                                value: new Date(detailUser.registrationDate).toLocaleDateString("fr-FR"),
+                            },
+                            { label: "Entreprise", value: detailUser.company?.name ?? "-" },
+                            { label: "Identifiant", value: detailUser.id, full: true },
+                        ]
+                        : []
+                }
+            />
         </div>
     )
 }

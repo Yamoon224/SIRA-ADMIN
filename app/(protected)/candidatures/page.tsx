@@ -16,14 +16,26 @@ import {
     CheckCircle2,
     Brain,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { FilterMenu, PERIOD_OPTIONS, matchesPeriod } from "@/components/ui/filter-menu"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { AddCandidatureModal } from "@/components/modals/add-candidature-modal"
 import { candidatureService } from "@/lib/services/candidature.service"
+import { exportToCSV } from "@/lib/export-utils"
 import type { ICandidature } from "@/lib/@types/entities"
 import { CandidatureStatus } from "@/lib/@types/enums"
+
+const SCORE_OPTIONS = [
+    { value: "all", label: "Tous les scores IA" },
+    { value: "80", label: "Score ≥ 80%" },
+    { value: "60", label: "Score ≥ 60%" },
+    { value: "40", label: "Score ≥ 40%" },
+]
 
 const STATUS_CLASSES: Record<CandidatureStatus, string> = {
     [CandidatureStatus.EN_ATTENTE]: "bg-[#fff3dd] text-[#cb8b25] border-[#cb8b25]",
@@ -46,6 +58,11 @@ function getInitials(name: string) {
 export default function Page() {
     const [searchTerm, setSearchTerm] = useState("")
     const [status, setStatus] = useState("all")
+    const [scoreFilter, setScoreFilter] = useState("all")
+    const [periodFilter, setPeriodFilter] = useState("all")
+    const [detail, setDetail] = useState<ICandidature | null>(null)
+    const [detailLoading, setDetailLoading] = useState(false)
+    const [isAddOpen, setIsAddOpen] = useState(false)
     const [candidates, setCandidates] = useState<ICandidature[]>([])
     const [statsData, setStatsData] = useState<{
         total: number
@@ -56,22 +73,23 @@ export default function Page() {
     } | null>(null)
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const [statsRes, listRes] = await Promise.all([
-                    candidatureService.getStats(),
-                    candidatureService.getCandidatures({ page: 1, limit: 20 }),
-                ])
-                setStatsData((statsRes as any)?.data ?? statsRes)
-                const items = (listRes as any)?.data ?? listRes
-                setCandidates(Array.isArray(items) ? items : [])
-            } catch (err) {
-                console.error("[candidatures] load error:", err)
-            } finally {
-                setLoading(false)
-            }
+    const load = async () => {
+        try {
+            const [statsRes, listRes] = await Promise.all([
+                candidatureService.getStats(),
+                candidatureService.getCandidatures({ page: 1, limit: 20 }),
+            ])
+            setStatsData((statsRes as any)?.data ?? statsRes)
+            const items = (listRes as any)?.data ?? listRes
+            setCandidates(Array.isArray(items) ? items : [])
+        } catch (err) {
+            console.error("[candidatures] load error:", err)
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         load()
     }, [])
 
@@ -152,9 +170,10 @@ export default function Page() {
             const inStatus =
                 status === "all" ||
                 STATUS_LABELS[c.status].toLowerCase().includes(status)
-            return inSearch && inStatus
+            const inScore = scoreFilter === "all" || (c.score ?? 0) >= Number(scoreFilter)
+            return inSearch && inStatus && inScore && matchesPeriod(c.appliedDate, periodFilter)
         })
-    }, [searchTerm, status, candidates])
+    }, [searchTerm, status, scoreFilter, periodFilter, candidates])
 
     const handleStatusUpdate = async (id: string, newStatus: CandidatureStatus) => {
         try {
@@ -162,18 +181,71 @@ export default function Page() {
             setCandidates((prev) =>
                 prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
             )
+            toast.success(`Statut mis à jour : ${STATUS_LABELS[newStatus]}`)
         } catch (err) {
             console.error("[candidatures] status update error:", err)
+            toast.error("Mise à jour du statut impossible")
         }
     }
 
     const handleDelete = async (id: string) => {
+        if (!window.confirm("Retirer définitivement cette candidature ?")) return
         try {
             await candidatureService.withdrawCandidature(id)
             setCandidates((prev) => prev.filter((c) => c.id !== id))
+            toast.success("Candidature retirée")
         } catch (err) {
             console.error("[candidatures] delete error:", err)
+            toast.error("Retrait impossible")
         }
+    }
+
+    /** Charge la fiche complète (CV, lettre, réponses) avant de l'afficher. */
+    const fetchFullCandidature = async (candidature: ICandidature) => {
+        try {
+            const res = await candidatureService.getCandidatureById(candidature.id)
+            return ((res as any)?.data ?? res ?? candidature) as ICandidature
+        } catch (err) {
+            console.error("[candidatures] detail error:", err)
+            return candidature
+        }
+    }
+
+    const handleOpenDetail = async (candidature: ICandidature) => {
+        setDetailLoading(true)
+        setDetail(candidature)
+        setDetail(await fetchFullCandidature(candidature))
+        setDetailLoading(false)
+    }
+
+    const handleOpenCV = async (candidature: ICandidature) => {
+        const full = await fetchFullCandidature(candidature)
+        const url = full.resume?.url
+        if (!url) {
+            toast.error("Aucun CV joint à cette candidature")
+            return
+        }
+        window.open(url, "_blank", "noopener,noreferrer")
+    }
+
+    const handleExport = () => {
+        if (filtered.length === 0) {
+            toast.error("Aucune candidature à exporter")
+            return
+        }
+        exportToCSV(
+            filtered.map((c) => ({
+                candidat: c.candidateName,
+                email: c.candidateEmail,
+                offre: c.jobOffer?.title ?? "",
+                entreprise: c.jobOffer?.company?.name ?? "",
+                statut: STATUS_LABELS[c.status] ?? c.status,
+                score: c.score ?? 0,
+                recue_le: new Date(c.appliedDate).toLocaleDateString("fr-FR"),
+            })),
+            "candidatures",
+        )
+        toast.success("Export CSV généré")
     }
 
     if (loading) {
@@ -236,15 +308,31 @@ export default function Page() {
                             </SelectContent>
                         </Select>
 
-                        <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                            <Filter className="h-3.5 w-3.5" />
-                            Filtres
-                        </Button>
-                        <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
+                        <FilterMenu
+                            label="Filtres"
+                            icon={Filter}
+                            value={scoreFilter}
+                            options={SCORE_OPTIONS}
+                            onChange={setScoreFilter}
+                        />
+                        <FilterMenu
+                            label="Période"
+                            value={periodFilter}
+                            options={PERIOD_OPTIONS}
+                            onChange={setPeriodFilter}
+                        />
+                        <Button
+                            variant="outline"
+                            className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]"
+                            onClick={handleExport}
+                        >
                             <Download className="h-3.5 w-3.5" />
                             Exporter
                         </Button>
-                        <Button className="h-10 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]">
+                        <Button
+                            className="h-10 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]"
+                            onClick={() => setIsAddOpen(true)}
+                        >
                             <Plus className="h-3.5 w-3.5" />
                             Nouvelle candidature
                         </Button>
@@ -292,11 +380,19 @@ export default function Page() {
                             </div>
 
                             <div className="mt-2 flex flex-wrap gap-2">
-                                <Button variant="outline" className="h-8 flex-1 rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                <Button
+                                    variant="outline"
+                                    className="h-8 flex-1 rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                    onClick={() => handleOpenDetail(candidate)}
+                                >
                                     <Eye className="h-3.5 w-3.5" />
                                     Voir le profil
                                 </Button>
-                                <Button variant="outline" className="h-8 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                <Button
+                                    variant="outline"
+                                    className="h-8 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                    onClick={() => handleOpenCV(candidate)}
+                                >
                                     CV
                                 </Button>
                                 <Button
@@ -313,9 +409,73 @@ export default function Page() {
                 ))}
             </div>
 
-            <Button className="hidden" variant="ghost">
-                <Sparkles className="h-3.5 w-3.5" />
-            </Button>
+            <AddCandidatureModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onCreated={load} />
+
+            <DetailModal
+                isOpen={detail !== null}
+                onClose={() => setDetail(null)}
+                title={detail?.candidateName ?? ""}
+                subtitle={detail?.candidateEmail}
+                fields={
+                    detail
+                        ? [
+                            { label: "Statut", value: STATUS_LABELS[detail.status] ?? detail.status },
+                            { label: "Score IA", value: `${detail.score ?? 0}%` },
+                            { label: "Offre", value: detail.jobOffer?.title ?? "-" },
+                            { label: "Entreprise", value: detail.jobOffer?.company?.name ?? "-" },
+                            { label: "Téléphone", value: detail.candidatePhone ?? "-" },
+                            { label: "Localisation", value: detail.candidateLocation ?? "-" },
+                            {
+                                label: "Reçue le",
+                                value: new Date(detail.appliedDate).toLocaleDateString("fr-FR"),
+                            },
+                            { label: "Titre déclaré", value: detail.candidateTitle ?? "-" },
+                            {
+                                label: "Compétences",
+                                value: (detail.candidateSkills ?? []).join(", ") || (detailLoading ? "Chargement..." : "-"),
+                                full: true,
+                            },
+                            {
+                                label: "Lettre de motivation",
+                                value: detail.coverLetter ?? "-",
+                                full: true,
+                            },
+                        ]
+                        : []
+                }
+                footer={
+                    detail ? (
+                        <>
+                            <Button variant="outline" onClick={() => handleOpenCV(detail)}>
+                                <Sparkles className="h-3.5 w-3.5" />
+                                Ouvrir le CV
+                            </Button>
+                            {detail.status !== CandidatureStatus.APPROUVEE && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        handleStatusUpdate(detail.id, CandidatureStatus.APPROUVEE)
+                                        setDetail(null)
+                                    }}
+                                >
+                                    Approuver
+                                </Button>
+                            )}
+                            {detail.status !== CandidatureStatus.REJETEE && (
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        handleStatusUpdate(detail.id, CandidatureStatus.REJETEE)
+                                        setDetail(null)
+                                    }}
+                                >
+                                    Rejeter
+                                </Button>
+                            )}
+                        </>
+                    ) : null
+                }
+            />
         </div>
     )
 }

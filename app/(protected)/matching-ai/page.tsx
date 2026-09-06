@@ -13,14 +13,20 @@ import {
     Users,
     Activity,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { matchingService } from "@/lib/services/matching.service"
 import type { IMatchingResult } from "@/lib/@types/entities"
+import { MatchingStatus } from "@/lib/@types/enums"
 
 function getInitials(name: string) {
     return name.split(" ").map((w) => w[0]).join("").toUpperCase().slice(0, 2)
 }
 
 export default function Page() {
+    const router = useRouter()
+    const [detailMatch, setDetailMatch] = useState<IMatchingResult | null>(null)
     const [matchingStats, setMatchingStats] = useState<{
         totalMatches: number
         averageScore: number
@@ -197,6 +203,7 @@ export default function Page() {
 
                         <Button
                             variant="outline"
+                            onClick={() => router.push("/analytics")}
                             className="mt-5 h-9 w-full rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]"
                         >
                             <Activity className="h-3.5 w-3.5" />
@@ -250,6 +257,7 @@ export default function Page() {
                                             </p>
                                             <Button
                                                 variant="outline"
+                                                onClick={() => setDetailMatch(match)}
                                                 className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
                                             >
                                                 Voir Détails
@@ -262,6 +270,54 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <DetailModal
+                isOpen={detailMatch !== null}
+                onClose={() => setDetailMatch(null)}
+                title={detailMatch?.candidateName ?? ""}
+                subtitle={detailMatch ? `${detailMatch.position} — ${detailMatch.company}` : undefined}
+                fields={
+                    detailMatch
+                        ? [
+                            { label: "Score de matching", value: `${detailMatch.matchingScore}%` },
+                            { label: "Statut", value: detailMatch.status },
+                            { label: "Email candidat", value: detailMatch.candidateEmail },
+                            { label: "Entreprise", value: detailMatch.company },
+                            { label: "Poste", value: detailMatch.position },
+                            {
+                                label: "Match du",
+                                value: detailMatch.matchDate
+                                    ? new Date(detailMatch.matchDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                        ]
+                        : []
+                }
+                footer={
+                    detailMatch && detailMatch.status !== MatchingStatus.FINALISE ? (
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                try {
+                                    await matchingService.updateMatchStatus(detailMatch.id, MatchingStatus.FINALISE)
+                                    setRecentMatches((prev) =>
+                                        prev.map((m) =>
+                                            m.id === detailMatch.id ? { ...m, status: MatchingStatus.FINALISE } : m,
+                                        ),
+                                    )
+                                    setDetailMatch(null)
+                                    toast.success("Match finalisé")
+                                } catch (err) {
+                                    console.error("[matching-ai] status error:", err)
+                                    toast.error("Mise à jour impossible")
+                                }
+                            }}
+                        >
+                            Finaliser le match
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }

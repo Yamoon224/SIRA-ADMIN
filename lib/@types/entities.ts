@@ -57,6 +57,24 @@ export interface IJobOffer {
 }
 
 // ─────────────────────────────────────────────
+export interface IUserResume {
+    id: string;
+    name: string;
+    url: string | null;
+    mimeType: string | null;
+    size: number;
+    isDefault: boolean;
+    createdAt: Date;
+}
+
+export interface ICandidatureAnswer {
+    id: string;
+    questionId: string | null;
+    question: string;
+    type: string;
+    value: string[];
+}
+
 export interface ICandidature {
     id: string;
     candidateName: string;
@@ -68,6 +86,14 @@ export interface ICandidature {
     jobOffer?: IJobOffer | null;
     createdAt: Date;
     updatedAt: Date;
+    // Champs renvoyés par GET /candidatures/{id} (CandidatureResource).
+    candidateTitle?: string | null;
+    candidateSkills?: string[];
+    candidatePhone?: string | null;
+    candidateLocation?: string | null;
+    coverLetter?: string | null;
+    resume?: IUserResume | null;
+    answers?: ICandidatureAnswer[];
 }
 
 // ─────────────────────────────────────────────

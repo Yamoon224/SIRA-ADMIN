@@ -19,6 +19,9 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { toast } from "sonner"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { exportToPDF } from "@/lib/export-utils"
 import { cvService } from "@/lib/services/cv.service"
 import type { ICVAnalysis } from "@/lib/@types/entities"
 
@@ -45,42 +48,100 @@ function formatDate(iso: string) {
 
 export default function Page() {
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const batchInputRef = useRef<HTMLInputElement>(null)
     const [isUploading, setIsUploading] = useState(false)
+    const [detailAnalysis, setDetailAnalysis] = useState<ICVAnalysis | null>(null)
     const [cvStats, setCvStats] = useState<{ totalAnalyzed: number; averageScore: number; completed: number; analyzing: number; failed: number } | null>(null)
     const [recentList, setRecentList] = useState<ICVAnalysis[]>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const [statsRes, recentRes] = await Promise.all([
-                    cvService.getStats(),
-                    cvService.getRecentAnalyses({ limit: 5 }),
-                ])
-                setCvStats((statsRes as any)?.data ?? statsRes)
-                const items = (recentRes as any)?.data ?? recentRes ?? []
-                setRecentList(Array.isArray(items) ? items : [])
-            } catch (err) {
-                console.error("[analyze-ai] load error:", err)
-            } finally {
-                setLoading(false)
-            }
+    const load = async () => {
+        try {
+            const [statsRes, recentRes] = await Promise.all([
+                cvService.getStats(),
+                cvService.getRecentAnalyses({ limit: 5 }),
+            ])
+            setCvStats((statsRes as any)?.data ?? statsRes)
+            const items = (recentRes as any)?.data ?? recentRes ?? []
+            setRecentList(Array.isArray(items) ? items : [])
+        } catch (err) {
+            console.error("[analyze-ai] load error:", err)
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         load()
     }, [])
+
+    /** Le backend lit le fichier sous la clé `cv` d'un envoi multipart. */
+    const analyzeOne = async (file: File) => {
+        const formData = new FormData()
+        formData.append("cv", file)
+        await cvService.analyzeCV(formData)
+    }
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0]
         if (!file) return
         setIsUploading(true)
         try {
-            await cvService.analyzeCV(file as any)
+            await analyzeOne(file)
+            toast.success(`${file.name} analysé`)
+            await load()
         } catch (error) {
             console.error("Erreur lors de l'analyse:", error)
+            toast.error("Analyse impossible")
         } finally {
             setIsUploading(false)
             event.target.value = ""
         }
+    }
+
+    const handleBatchUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(event.target.files ?? [])
+        if (files.length === 0) return
+
+        setIsUploading(true)
+        let done = 0
+        const failed: string[] = []
+        for (const file of files) {
+            try {
+                await analyzeOne(file)
+                done += 1
+            } catch (error) {
+                console.error("[analyze-ai] batch error:", error)
+                failed.push(file.name)
+            }
+        }
+        setIsUploading(false)
+        event.target.value = ""
+
+        if (done > 0) toast.success(`${done} CV analysé(s)`)
+        if (failed.length > 0) toast.error(`Échec : ${failed.join(", ")}`)
+        await load()
+    }
+
+    const handleReport = async (analysis: ICVAnalysis | undefined) => {
+        if (!analysis) {
+            toast.error("Aucune analyse à exporter")
+            return
+        }
+        await exportToPDF(
+            [
+                {
+                    Fichier: analysis.fileName,
+                    Score: `${analysis.analysisScore}%`,
+                    Statut: analysis.status === "COMPLETED" ? "Complète" : "En cours",
+                    "Analysé le": formatDate(String(analysis.uploadDate)),
+                    Recommandations: (analysis.recommendations ?? []).join(" | ") || "-",
+                },
+            ],
+            `analyse-cv-${baseName(analysis.fileName).replace(/\s+/g, "-").toLowerCase()}`,
+            `Rapport d'analyse — ${baseName(analysis.fileName)}`,
+        )
+        toast.success("Rapport prêt à imprimer / enregistrer en PDF")
     }
 
     const totalAnalyzed = cvStats?.totalAnalyzed ?? 0
@@ -135,7 +196,11 @@ export default function Page() {
                     <h1 className="text-[28px] font-semibold leading-tight text-[#242a38] sm:text-[33px] lg:text-[39px]">Analyse IA des CV</h1>
                     <p className="mt-1 text-[14px] text-[#7f8797]">Analyse et évalue les CV avec l'intelligence artificielle</p>
                 </div>
-                <Button className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]">
+                <Button
+                    className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                >
                     <Sparkles className="h-3.5 w-3.5" />
                     Nouvelle Analyse
                 </Button>
@@ -167,7 +232,20 @@ export default function Page() {
                                 <Upload className="h-3.5 w-3.5" />
                                 {isUploading ? "Analyse en cours..." : "Sélectionner un fichier"}
                             </Button>
-                            <Button variant="outline" className="h-9 rounded-full border-[#e4e7f0] bg-white px-5 text-[12px] text-[#4c5466] hover:bg-[#f5f7fc]">
+                            <input
+                                ref={batchInputRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx"
+                                multiple
+                                className="hidden"
+                                onChange={handleBatchUpload}
+                            />
+                            <Button
+                                variant="outline"
+                                onClick={() => batchInputRef.current?.click()}
+                                disabled={isUploading}
+                                className="h-9 rounded-full border-[#e4e7f0] bg-white px-5 text-[12px] text-[#4c5466] hover:bg-[#f5f7fc]"
+                            >
                                 Analyser par lot
                             </Button>
                         </div>
@@ -256,7 +334,11 @@ export default function Page() {
                                                 </div>
                                             ))}
                                         </div>
-                                        <Button variant="outline" className="mt-2 h-9 w-full rounded-lg border-[#e4e7f0] bg-white px-3 text-[11px] text-[#4c5466] hover:bg-[#f5f7fc]">
+                                        <Button
+                                            variant="outline"
+                                            onClick={() => handleReport(lastCV)}
+                                            className="mt-2 h-9 w-full rounded-lg border-[#e4e7f0] bg-white px-3 text-[11px] text-[#4c5466] hover:bg-[#f5f7fc]"
+                                        >
                                             Rapport Complet PDF
                                         </Button>
                                     </div>
@@ -292,7 +374,11 @@ export default function Page() {
                                 description="Considérer une certification Google Analytics pour renforcer le profil."
                             />
                         </div>
-                        <Button variant="outline" className="mt-4 h-9 w-full rounded-lg border-[#e4e7f0] bg-white px-3 text-[11px] text-[#4c5466] hover:bg-[#f5f7fc]">
+                        <Button
+                            variant="outline"
+                            onClick={() => handleReport(lastCV)}
+                            className="mt-4 h-9 w-full rounded-lg border-[#e4e7f0] bg-white px-3 text-[11px] text-[#4c5466] hover:bg-[#f5f7fc]"
+                        >
                             <ArrowUpFromLine className="h-3.5 w-3.5" />
                             Rapport Complet PDF
                         </Button>
@@ -343,7 +429,11 @@ export default function Page() {
                                             <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${isCompleted ? "bg-[#24bf7e] text-white" : "bg-[#edf0f6] text-[#3d4354]"}`}>
                                                 {isCompleted ? "Complète" : "En cours"}
                                             </Badge>
-                                            <Button variant="outline" className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setDetailAnalysis(analysis)}
+                                                className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                            >
                                                 Détails
                                             </Button>
                                         </div>
@@ -354,6 +444,67 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <DetailModal
+                isOpen={detailAnalysis !== null}
+                onClose={() => setDetailAnalysis(null)}
+                title={detailAnalysis ? baseName(detailAnalysis.fileName) : ""}
+                subtitle={detailAnalysis?.fileName}
+                fields={
+                    detailAnalysis
+                        ? [
+                            { label: "Score", value: `${detailAnalysis.analysisScore}%` },
+                            {
+                                label: "Statut",
+                                value: detailAnalysis.status === "COMPLETED" ? "Complète" : "En cours",
+                            },
+                            { label: "Fichier", value: detailAnalysis.fileName },
+                            { label: "Analysé le", value: formatDate(String(detailAnalysis.uploadDate)) },
+                            {
+                                label: `Recommandations (${detailAnalysis.recommendations?.length ?? 0})`,
+                                value:
+                                    (detailAnalysis.recommendations ?? []).length > 0 ? (
+                                        <ul className="space-y-1">
+                                            {detailAnalysis.recommendations.map((rec, i) => (
+                                                <li key={i}>• {rec}</li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        "-"
+                                    ),
+                                full: true,
+                            },
+                        ]
+                        : []
+                }
+                footer={
+                    detailAnalysis ? (
+                        <>
+                            <Button variant="outline" onClick={() => handleReport(detailAnalysis)}>
+                                Rapport PDF
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="text-red-600 hover:bg-red-50"
+                                onClick={async () => {
+                                    if (!window.confirm(`Supprimer l'analyse de ${detailAnalysis.fileName} ?`)) return
+                                    try {
+                                        await cvService.deleteAnalysis(detailAnalysis.id)
+                                        toast.success("Analyse supprimée")
+                                        setDetailAnalysis(null)
+                                        await load()
+                                    } catch (err) {
+                                        console.error("[analyze-ai] delete error:", err)
+                                        toast.error("Suppression impossible")
+                                    }
+                                }}
+                            >
+                                Supprimer
+                            </Button>
+                        </>
+                    ) : null
+                }
+            />
         </div>
     )
 }

@@ -12,10 +12,14 @@ import {
     Trophy,
     FolderOpen,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { FilterMenu } from "@/components/ui/filter-menu"
+import { AddPortfolioModal } from "@/components/modals/add-portfolio-modal"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { portfolioService } from "@/lib/services/portfolio.service"
 import type { IPortfolio } from "@/lib/@types/entities"
 
@@ -25,6 +29,9 @@ function getInitials(name: string) {
 
 export default function Page() {
     const [query, setQuery] = useState("")
+    const [categoryFilter, setCategoryFilter] = useState("all")
+    const [detailPortfolio, setDetailPortfolio] = useState<IPortfolio | null>(null)
+    const [isAddOpen, setIsAddOpen] = useState(false)
     const [portfolioStats, setPortfolioStats] = useState<{
         totalPortfolios: number
         totalViews: number
@@ -36,41 +43,84 @@ export default function Page() {
     const [categories, setCategories] = useState<Array<{ name: string; count: number }>>([])
     const [loading, setLoading] = useState(true)
 
-    useEffect(() => {
-        const load = async () => {
-            try {
-                const [statsRes, featuredRes, listRes, catRes] = await Promise.all([
-                    portfolioService.getStats(),
-                    portfolioService.getFeaturedPortfolios(),
-                    portfolioService.getPortfolios({ page: 1, limit: 20 }),
-                    portfolioService.getPopularCategories(),
-                ])
-                setPortfolioStats((statsRes as any)?.data ?? statsRes)
-                const feat = (featuredRes as any)?.data ?? featuredRes
-                setFeatured(Array.isArray(feat) ? feat : [])
-                const items = (listRes as any)?.data ?? listRes
-                setPortfolios(Array.isArray(items) ? items : [])
-                const cats = (catRes as any)?.data ?? catRes
-                setCategories(Array.isArray(cats) ? cats : [])
-            } catch (err) {
-                console.error("[portfolios] load error:", err)
-            } finally {
-                setLoading(false)
-            }
+    const load = async () => {
+        try {
+            const [statsRes, featuredRes, listRes, catRes] = await Promise.all([
+                portfolioService.getStats(),
+                portfolioService.getFeaturedPortfolios(),
+                portfolioService.getPortfolios({ page: 1, limit: 20 }),
+                portfolioService.getPopularCategories(),
+            ])
+            setPortfolioStats((statsRes as any)?.data ?? statsRes)
+            const feat = (featuredRes as any)?.data ?? featuredRes
+            setFeatured(Array.isArray(feat) ? feat : [])
+            const items = (listRes as any)?.data ?? listRes
+            setPortfolios(Array.isArray(items) ? items : [])
+            const cats = (catRes as any)?.data ?? catRes
+            setCategories(Array.isArray(cats) ? cats : [])
+        } catch (err) {
+            console.error("[portfolios] load error:", err)
+        } finally {
+            setLoading(false)
         }
+    }
+
+    useEffect(() => {
         load()
     }, [])
 
+    const categoryOptions = useMemo(
+        () => [
+            { value: "all", label: "Toutes les catégories" },
+            ...categories.map((category) => ({
+                value: category.name,
+                label: `${category.name} (${category.count})`,
+            })),
+        ],
+        [categories],
+    )
+
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase()
-        if (!q) return portfolios
-        return portfolios.filter((p) =>
-            [p.title, p.description, ...(p.skills ?? []), p.user?.name ?? ""]
-                .join(" ")
-                .toLowerCase()
-                .includes(q),
-        )
-    }, [query, portfolios])
+        return portfolios.filter((p) => {
+            const matchesQuery =
+                !q ||
+                [p.title, p.description, ...(p.skills ?? []), p.user?.name ?? ""]
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(q)
+            // La catégorie est portée par les compétences déclarées du portfolio.
+            const matchesCategory =
+                categoryFilter === "all" ||
+                (p.skills ?? []).some((skill) => skill.toLowerCase() === categoryFilter.toLowerCase())
+            return matchesQuery && matchesCategory
+        })
+    }, [query, categoryFilter, portfolios])
+
+    const handleToggleFeatured = async (portfolio: IPortfolio) => {
+        try {
+            await portfolioService.featurePortfolio(portfolio.id, !portfolio.featured)
+            toast.success(portfolio.featured ? "Retiré de la vedette" : "Mis en vedette")
+            setDetailPortfolio(null)
+            await load()
+        } catch (err) {
+            console.error("[portfolios] feature error:", err)
+            toast.error("Action impossible")
+        }
+    }
+
+    const handleDelete = async (portfolio: IPortfolio) => {
+        if (!window.confirm(`Supprimer le portfolio « ${portfolio.title} » ?`)) return
+        try {
+            await portfolioService.deletePortfolio(portfolio.id)
+            toast.success("Portfolio supprimé")
+            setDetailPortfolio(null)
+            await load()
+        } catch (err) {
+            console.error("[portfolios] delete error:", err)
+            toast.error("Suppression impossible")
+        }
+    }
 
     if (loading) {
         return (
@@ -90,7 +140,10 @@ export default function Page() {
                     </p>
                 </div>
 
-                <Button className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]">
+                <Button
+                    className="mt-1 h-9 rounded-full bg-[#0f56d9] px-5 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]"
+                    onClick={() => setIsAddOpen(true)}
+                >
                     <Plus className="h-3.5 w-3.5" />
                     Créer Portfolio
                 </Button>
@@ -115,18 +168,30 @@ export default function Page() {
                                 className="h-10 rounded-lg border-[#edf0f5] bg-[#f8f9fc] pl-9 text-[12px] text-[#313847] shadow-none"
                             />
                         </div>
-                        <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                            <Filter className="h-3.5 w-3.5" />
-                            Filtres
-                        </Button>
+                        <FilterMenu
+                            label="Filtres"
+                            icon={Filter}
+                            value={categoryFilter}
+                            options={categoryOptions}
+                            onChange={setCategoryFilter}
+                            align="end"
+                        />
                     </div>
 
                     {categories.length > 0 && (
                         <div className="mt-4 flex flex-wrap gap-2">
                             {categories.slice(0, 4).map((cat) => (
-                                <Badge key={cat.name} className="rounded-full border border-[#e7ebf3] bg-white px-2 py-0.5 text-[10px] text-[#3f4657]">
-                                    {cat.name} ({cat.count})
-                                </Badge>
+                                <button
+                                    key={cat.name}
+                                    type="button"
+                                    onClick={() => setCategoryFilter(categoryFilter === cat.name ? "all" : cat.name)}
+                                >
+                                    <Badge
+                                        className={`rounded-full border px-2 py-0.5 text-[10px] ${categoryFilter === cat.name ? "border-[#bcd3fb] bg-[#eef4ff] text-[#2f80ed]" : "border-[#e7ebf3] bg-white text-[#3f4657]"}`}
+                                    >
+                                        {cat.name} ({cat.count})
+                                    </Badge>
+                                </button>
                             ))}
                         </div>
                     )}
@@ -145,7 +210,12 @@ export default function Page() {
                         ) : (
                             <div className="space-y-2">
                                 {categories.map((category) => (
-                                    <div key={category.name} className="flex items-center justify-between rounded-lg border border-[#ebeff6] bg-[#f8f9fc] px-3 py-2">
+                                    <button
+                                        key={category.name}
+                                        type="button"
+                                        onClick={() => setCategoryFilter(categoryFilter === category.name ? "all" : category.name)}
+                                        className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left ${categoryFilter === category.name ? "border-[#bcd3fb] bg-[#eef4ff]" : "border-[#ebeff6] bg-[#f8f9fc] hover:bg-[#f1f4fa]"}`}
+                                    >
                                         <div className="flex items-center gap-2">
                                             <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#edf3ff] text-[#3f7fe8]">
                                                 <Star className="h-3 w-3" />
@@ -155,7 +225,7 @@ export default function Page() {
                                                 <p className="text-[10px] text-[#8a92a3]">{category.count} portfolios</p>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         )}
@@ -174,7 +244,12 @@ export default function Page() {
                         ) : (
                             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                                 {featured.map((item) => (
-                                    <div key={item.id} className="rounded-[10px] border border-[#e7ebf3] bg-white px-3 py-3">
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => setDetailPortfolio(item)}
+                                        className="rounded-[10px] border border-[#e7ebf3] bg-white px-3 py-3 text-left hover:border-[#bcd3fb] hover:bg-[#fafcff]"
+                                    >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-[#4e8df3] to-[#6b47e8] text-[10px] font-semibold text-white">
@@ -199,7 +274,7 @@ export default function Page() {
                                                 <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {item.likes}</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 ))}
                             </div>
                         )}
@@ -251,7 +326,12 @@ export default function Page() {
                                             <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {item.views}</span>
                                             <span className="flex items-center gap-1"><Star className="h-3 w-3" /> {item.likes}</span>
                                         </div>
-                                        <Button variant="ghost" className="h-6 w-6 p-0 text-[#697286] hover:bg-[#f2f5fb]">
+                                        <Button
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 text-[#697286] hover:bg-[#f2f5fb]"
+                                            title="Ouvrir la fiche du portfolio"
+                                            onClick={() => setDetailPortfolio(item)}
+                                        >
                                             <ExternalLink className="h-3.5 w-3.5" />
                                         </Button>
                                     </div>
@@ -261,6 +341,55 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <AddPortfolioModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onCreated={load} />
+
+            <DetailModal
+                isOpen={detailPortfolio !== null}
+                onClose={() => setDetailPortfolio(null)}
+                title={detailPortfolio?.title ?? ""}
+                subtitle={detailPortfolio?.user?.name ?? undefined}
+                fields={
+                    detailPortfolio
+                        ? [
+                            { label: "Auteur", value: detailPortfolio.user?.name ?? "-" },
+                            { label: "Email", value: detailPortfolio.user?.email ?? "-" },
+                            { label: "Vues", value: detailPortfolio.views },
+                            { label: "Likes", value: detailPortfolio.likes },
+                            { label: "Téléchargements", value: detailPortfolio.downloads },
+                            { label: "En vedette", value: detailPortfolio.featured ? "Oui" : "Non" },
+                            {
+                                label: "Créé le",
+                                value: detailPortfolio.createdDate
+                                    ? new Date(detailPortfolio.createdDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                            {
+                                label: "Compétences",
+                                value: (detailPortfolio.skills ?? []).join(", ") || "-",
+                                full: true,
+                            },
+                            { label: "Description", value: detailPortfolio.description, full: true },
+                        ]
+                        : []
+                }
+                footer={
+                    detailPortfolio ? (
+                        <>
+                            <Button variant="outline" onClick={() => handleToggleFeatured(detailPortfolio)}>
+                                {detailPortfolio.featured ? "Retirer de la vedette" : "Mettre en vedette"}
+                            </Button>
+                            <Button
+                                variant="outline"
+                                className="text-red-600 hover:bg-red-50"
+                                onClick={() => handleDelete(detailPortfolio)}
+                            >
+                                Supprimer
+                            </Button>
+                        </>
+                    ) : null
+                }
+            />
         </div>
     )
 }

@@ -20,9 +20,13 @@ import {
     MoreHorizontal,
     Download,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { exportToCSV } from "@/lib/export-utils"
 import { subscriptionService, type SubscriptionStats, type SubscriptionRow } from "@/lib/services/subscription.service"
 
 const FALLBACK_REVENUE_DATA = [
@@ -51,6 +55,8 @@ const STATUS_MAP: Record<string, { label: string; cls: string }> = {
 
 
 export default function Page() {
+    const router = useRouter()
+    const [detailSub, setDetailSub] = useState<SubscriptionRow | null>(null)
     const [subStats, setSubStats] = useState<SubscriptionStats | null>(null)
     const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([])
     const [revenueData, setRevenueData] = useState(FALLBACK_REVENUE_DATA)
@@ -83,6 +89,28 @@ export default function Page() {
         load()
     }, [])
 
+    const handleExport = () => {
+        if (subscriptions.length === 0) {
+            toast.error("Aucun abonnement à exporter")
+            return
+        }
+        exportToCSV(
+            subscriptions.map((sub) => ({
+                utilisateur: sub.user?.name ?? "",
+                email: sub.user?.email ?? "",
+                plan: sub.plan?.name ?? "",
+                statut: STATUS_MAP[sub.status]?.label ?? sub.status,
+                montant_fcfa: sub.plan?.price ?? "",
+                periode: sub.plan?.billingPeriod ?? "",
+                debut: sub.startDate ? new Date(sub.startDate).toLocaleDateString("fr-FR") : "",
+                expiration: sub.endDate ? new Date(sub.endDate).toLocaleDateString("fr-FR") : "",
+                renouvellement_auto: sub.autoRenew ? "oui" : "non",
+            })),
+            "abonnements",
+        )
+        toast.success("Export CSV généré")
+    }
+
     const total = subStats?.total ?? 0
     const active = subStats?.active ?? 0
     const expired = subStats?.expired ?? 0
@@ -96,7 +124,11 @@ export default function Page() {
                     <p className="mt-1 text-[14px] text-[#7f8797]">Gestion des abonnements et facturation des utilisateurs</p>
                 </div>
 
-                <Button className="mt-1 h-9 rounded-full bg-[#0f56d9] px-6 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]">
+                <Button
+                    className="mt-1 h-9 rounded-full bg-[#0f56d9] px-6 text-[12px] font-semibold text-white hover:bg-[#0a4cc5]"
+                    onClick={handleExport}
+                    disabled={loading}
+                >
                     Exporter
                     <Download className="h-3.5 w-3.5" />
                 </Button>
@@ -255,7 +287,14 @@ export default function Page() {
                                             <TableCell className="py-3 text-[12px] text-[#4a5162]">{amount}</TableCell>
                                             <TableCell className="py-3 text-[12px] text-[#7d8698]">{endDate}</TableCell>
                                             <TableCell className="px-4 py-3 text-right text-[#3d4455]">
-                                                <MoreHorizontal className="ml-auto h-4 w-4" />
+                                                <Button
+                                                    variant="ghost"
+                                                    className="ml-auto h-7 w-7 p-0 hover:bg-[#f1f4fa]"
+                                                    title="Voir le détail de l'abonnement"
+                                                    onClick={() => setDetailSub(sub)}
+                                                >
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     )
@@ -265,6 +304,54 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <DetailModal
+                isOpen={detailSub !== null}
+                onClose={() => setDetailSub(null)}
+                title={detailSub?.user?.name ?? "Abonnement"}
+                subtitle={detailSub?.user?.email}
+                fields={
+                    detailSub
+                        ? [
+                            { label: "Plan", value: detailSub.plan?.name ?? "-" },
+                            {
+                                label: "Statut",
+                                value: STATUS_MAP[detailSub.status]?.label ?? detailSub.status,
+                            },
+                            {
+                                label: "Montant (FCFA)",
+                                value:
+                                    detailSub.plan?.price != null
+                                        ? Number(detailSub.plan.price).toLocaleString("fr-FR")
+                                        : "-",
+                            },
+                            { label: "Périodicité", value: detailSub.plan?.billingPeriod ?? "-" },
+                            {
+                                label: "Début",
+                                value: detailSub.startDate
+                                    ? new Date(detailSub.startDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                            {
+                                label: "Expiration",
+                                value: detailSub.endDate
+                                    ? new Date(detailSub.endDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                            { label: "Renouvellement auto", value: detailSub.autoRenew ? "Oui" : "Non" },
+                            { label: "Type de compte", value: detailSub.user?.role ?? "-" },
+                            { label: "Identifiant", value: detailSub.id, full: true },
+                        ]
+                        : []
+                }
+                footer={
+                    detailSub ? (
+                        <Button variant="outline" onClick={() => router.push("/gestion-utilisateurs")}>
+                            Voir le compte
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }

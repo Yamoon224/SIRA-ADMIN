@@ -16,11 +16,12 @@ export const planningService = {
         })
     },
 
-    getEvents: async (date: string) => {
+    /** Sans `date`, le backend renvoie tous les événements (vues semaine/mois). */
+    getEvents: async (date?: string) => {
         return apiRequest<ApiResponse<ICalendarEvent[]>>({
             endpoint: "/admin/planning/events",
             method: "GET",
-            params: { date },
+            params: date ? { date } : undefined,
         })
     },
 

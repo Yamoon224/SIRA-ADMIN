@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/layout/header"
 import { Sidebar } from "@/components/layout/sidebar"
+import { Toaster } from "@/components/ui/sonner"
 
 export default function ProtectedLayout({
     children,
@@ -43,6 +44,8 @@ export default function ProtectedLayout({
                     {children}
                 </main>
             </div>
+
+            <Toaster position="top-right" richColors />
         </div>
     )
 }

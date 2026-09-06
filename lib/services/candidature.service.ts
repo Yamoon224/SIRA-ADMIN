@@ -32,6 +32,22 @@ export const candidatureService = {
         })
     },
 
+    createCandidature: async (data: {
+        candidateName: string
+        candidateEmail: string
+        userId: string
+        jobOfferId: string
+        appliedDate: string
+        status?: CandidatureStatus
+        score?: number
+    }) => {
+        return apiRequest<ApiResponse<ICandidature>>({
+            endpoint: "/candidatures",
+            method: "POST",
+            data,
+        })
+    },
+
     updateCandidatureStatus: async (id: string, status: CandidatureStatus) => {
         // Pas de route dédiée /candidatures/{id}/status côté backend — PATCH
         // /candidatures/{id} accepte déjà `status` (ADMIN outrepasse la

@@ -14,6 +14,10 @@ import {
     CircleCheck,
     TriangleAlert,
 } from "lucide-react"
+import { toast } from "sonner"
+import { DetailModal } from "@/components/modals/detail-modal"
+import { ScoringWeightsModal } from "@/components/modals/scoring-weights-modal"
+import { exportToPDF } from "@/lib/export-utils"
 import { scoringService, type IScoringCriteria } from "@/lib/services/scoring.service"
 import type { IScoringResult } from "@/lib/@types/entities"
 
@@ -32,30 +36,70 @@ export default function Page() {
     } | null>(null)
     const [recentAnalyses, setRecentAnalyses] = useState<IScoringResult[]>([])
     const [loading, setLoading] = useState(true)
+    const [isWeightsOpen, setIsWeightsOpen] = useState(false)
+    const [detailResult, setDetailResult] = useState<IScoringResult | null>(null)
+
+    const load = async () => {
+        try {
+            const [statsRes, criteriaRes, perfRes, recentRes] = await Promise.all([
+                scoringService.getStats(),
+                scoringService.getScoringCriteria(),
+                scoringService.getAlgorithmPerformance(),
+                scoringService.getRecentAnalyses({ limit: 5 }),
+            ])
+            setScoringStats((statsRes as any)?.data ?? statsRes)
+            const crit = (criteriaRes as any)?.data ?? criteriaRes
+            setCriteria(Array.isArray(crit) ? crit : [])
+            setPerformance((perfRes as any)?.data ?? perfRes)
+            const items = (recentRes as any)?.data ?? recentRes
+            setRecentAnalyses(Array.isArray(items) ? items : [])
+        } catch (err) {
+            console.error("[scoring-ai] load error:", err)
+        } finally {
+            setLoading(false)
+        }
+    }
 
     useEffect(() => {
-        const load = async () => {
-            try {
-                const [statsRes, criteriaRes, perfRes, recentRes] = await Promise.all([
-                    scoringService.getStats(),
-                    scoringService.getScoringCriteria(),
-                    scoringService.getAlgorithmPerformance(),
-                    scoringService.getRecentAnalyses({ limit: 5 }),
-                ])
-                setScoringStats((statsRes as any)?.data ?? statsRes)
-                const crit = (criteriaRes as any)?.data ?? criteriaRes
-                setCriteria(Array.isArray(crit) ? crit : [])
-                setPerformance((perfRes as any)?.data ?? perfRes)
-                const items = (recentRes as any)?.data ?? recentRes
-                setRecentAnalyses(Array.isArray(items) ? items : [])
-            } catch (err) {
-                console.error("[scoring-ai] load error:", err)
-            } finally {
-                setLoading(false)
-            }
-        }
         load()
     }, [])
+
+    /** Ouvre la fiche détaillée, en récupérant le découpage par critère. */
+    const handleOpenDetail = async (row: IScoringResult) => {
+        setDetailResult(row)
+        try {
+            const res = await scoringService.getScoringById(row.id)
+            const full = ((res as any)?.data ?? res) as IScoringResult
+            if (full?.id) setDetailResult(full)
+        } catch (err) {
+            console.error("[scoring-ai] detail error:", err)
+        }
+    }
+
+    const handleGenerateReport = async (row: IScoringResult) => {
+        const detail = Array.isArray(row.criteria)
+            ? (row.criteria as Array<{ name?: string; score?: number; maxScore?: number }>)
+            : []
+        await exportToPDF(
+            [
+                {
+                    Candidat: row.candidateName,
+                    Email: row.candidateEmail,
+                    Poste: row.position,
+                    "Score global": `${row.overallScore}/100`,
+                    Statut: row.status === "COMPLETED" ? "Terminé" : "En cours",
+                    "Analysé le": new Date(row.analysisDate).toLocaleDateString("fr-FR"),
+                    Détail:
+                        detail
+                            .map((c) => `${c.name ?? "-"}: ${c.score ?? 0}/${c.maxScore ?? 100}`)
+                            .join(" | ") || "-",
+                },
+            ],
+            `scoring-${row.candidateName.replace(/\s+/g, "-").toLowerCase()}`,
+            `Rapport de scoring — ${row.candidateName}`,
+        )
+        toast.success("Rapport prêt à imprimer / enregistrer en PDF")
+    }
 
     const stats = [
         { label: "Scores Générés", value: scoringStats ? scoringStats.generatedScores.toLocaleString("fr-FR") : "-", icon: Brain },
@@ -135,6 +179,7 @@ export default function Page() {
 
                         <Button
                             variant="outline"
+                            onClick={() => setIsWeightsOpen(true)}
                             className="mt-5 h-9 w-full rounded-lg border-[#eceff5] bg-[#f8f9fc] text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]"
                         >
                             <Settings className="h-3.5 w-3.5" />
@@ -199,6 +244,7 @@ export default function Page() {
                                             </Badge>
                                             <Button
                                                 variant="outline"
+                                                onClick={() => handleOpenDetail(row)}
                                                 className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
                                             >
                                                 Voir Détail
@@ -210,7 +256,11 @@ export default function Page() {
                                         <p className="text-[10px] text-[#8a92a3]">
                                             Analysé le {new Date(row.analysisDate).toLocaleDateString("fr-FR")}
                                         </p>
-                                        <Button variant="ghost" className="h-7 rounded-md px-2 text-[11px] text-[#4d5567] hover:bg-[#f5f7fc]">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => handleGenerateReport(row)}
+                                            className="h-7 rounded-md px-2 text-[11px] text-[#4d5567] hover:bg-[#f5f7fc]"
+                                        >
                                             Générer Rapport
                                         </Button>
                                     </div>
@@ -220,6 +270,52 @@ export default function Page() {
                     )}
                 </CardContent>
             </Card>
+
+            <ScoringWeightsModal
+                isOpen={isWeightsOpen}
+                onClose={() => setIsWeightsOpen(false)}
+                criteria={displayedCriteria}
+                onSaved={load}
+            />
+
+            <DetailModal
+                isOpen={detailResult !== null}
+                onClose={() => setDetailResult(null)}
+                title={detailResult?.candidateName ?? ""}
+                subtitle={detailResult?.position}
+                fields={
+                    detailResult
+                        ? [
+                            { label: "Score global", value: `${detailResult.overallScore}/100` },
+                            {
+                                label: "Statut",
+                                value: detailResult.status === "COMPLETED" ? "Terminé" : "En cours",
+                            },
+                            { label: "Email", value: detailResult.candidateEmail },
+                            {
+                                label: "Analysé le",
+                                value: new Date(detailResult.analysisDate).toLocaleDateString("fr-FR"),
+                            },
+                            {
+                                label: "Détail par critère",
+                                value: Array.isArray(detailResult.criteria)
+                                    ? (detailResult.criteria as Array<{ name?: string; score?: number; maxScore?: number }>)
+                                        .map((c) => `${c.name ?? "-"} : ${c.score ?? 0}/${c.maxScore ?? 100}`)
+                                        .join(" — ") || "-"
+                                    : "-",
+                                full: true,
+                            },
+                        ]
+                        : []
+                }
+                footer={
+                    detailResult ? (
+                        <Button variant="outline" onClick={() => handleGenerateReport(detailResult)}>
+                            Générer le rapport
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }

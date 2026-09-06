@@ -14,18 +14,32 @@ import {
     Workflow,
     ExternalLink,
 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { FilterMenu, optionsFrom } from "@/components/ui/filter-menu"
 import { AddCompanyModal } from "@/components/modals/add-company-modal"
+import { DetailModal } from "@/components/modals/detail-modal"
 import { companyService } from "@/lib/services/company.service"
 import type { ICompany } from "@/lib/@types/entities"
 
 const BAR_COLORS = ["bg-[#635bff]", "bg-[#29c587]", "bg-[#635bff]", "bg-[#ef9435]", "bg-[#2b78f6]"]
 
+const QUICK_ACTIONS = [
+    { label: "Gérer les Offres d'Emploi", href: "/offres-emploi" },
+    { label: "Rapport de Candidatures", href: "/candidatures" },
+    { label: "Statistiques de Performance", href: "/analytics" },
+]
+
 export default function EntreprisesPage() {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState("")
+    const [sectorFilter, setSectorFilter] = useState("all")
+    const [locationFilter, setLocationFilter] = useState("all")
+    const [detailCompany, setDetailCompany] = useState<ICompany | null>(null)
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [companies, setCompanies] = useState<ICompany[]>([])
     const [sectors, setSectors] = useState<Array<{ name: string; count: number; percentage: number }>>([])
@@ -55,18 +69,34 @@ export default function EntreprisesPage() {
         loadData()
     }, [])
 
+    const sectorOptions = useMemo(
+        () => optionsFrom(companies, (c) => c.sector, "Tous les secteurs"),
+        [companies],
+    )
+
+    const locationOptions = useMemo(
+        () => optionsFrom(companies, (c) => c.location ?? c.headquarters, "Toutes les localisations"),
+        [companies],
+    )
+
     const filteredCompanies = useMemo(() => {
         const normalized = searchTerm.trim().toLowerCase()
-        if (!normalized) return companies
-        return companies.filter((c) =>
-            [c.name, c.email ?? "", c.sector, c.location ?? ""].some((v) =>
-                v.toLowerCase().includes(normalized)
-            )
-        )
-    }, [searchTerm, companies])
+        return companies.filter((c) => {
+            const matchesSearch =
+                !normalized ||
+                [c.name, c.email ?? "", c.sector, c.location ?? ""].some((v) =>
+                    v.toLowerCase().includes(normalized),
+                )
+            const matchesSector = sectorFilter === "all" || c.sector === sectorFilter
+            const matchesLocation =
+                locationFilter === "all" || (c.location ?? c.headquarters) === locationFilter
+            return matchesSearch && matchesSector && matchesLocation
+        })
+    }, [searchTerm, sectorFilter, locationFilter, companies])
 
     const handleAddCompany = async () => {
         setIsAddModalOpen(false)
+        toast.success("Entreprise enregistrée")
         await loadData()
     }
 
@@ -149,14 +179,21 @@ export default function EntreprisesPage() {
                             />
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <Filter className="h-3.5 w-3.5" />
-                                Secteur
-                            </Button>
-                            <Button variant="outline" className="h-10 rounded-lg border-[#eceff5] bg-[#f8f9fc] px-4 text-[12px] text-[#4d5567] hover:bg-[#f1f4fa]">
-                                <MapPin className="h-3.5 w-3.5" />
-                                Location
-                            </Button>
+                            <FilterMenu
+                                label="Secteur"
+                                icon={Filter}
+                                value={sectorFilter}
+                                options={sectorOptions}
+                                onChange={setSectorFilter}
+                            />
+                            <FilterMenu
+                                label="Location"
+                                icon={MapPin}
+                                value={locationFilter}
+                                options={locationOptions}
+                                onChange={setLocationFilter}
+                                align="end"
+                            />
                         </div>
                     </div>
                 </CardContent>
@@ -191,18 +228,15 @@ export default function EntreprisesPage() {
                     <CardContent className="px-4 py-4">
                         <h2 className="mb-4 text-[24px] font-semibold text-[#242a38]">Actions Rapides</h2>
                         <div className="space-y-3">
-                            {[
-                                "Gérer les Offres d'Emploi",
-                                "Rapport de Candidatures",
-                                "Statistiques de Performance",
-                            ].map((label) => (
+                            {QUICK_ACTIONS.map((action) => (
                                 <Button
-                                    key={label}
+                                    key={action.label}
                                     variant="outline"
+                                    onClick={() => router.push(action.href)}
                                     className="h-10 w-full justify-start rounded-lg border-[#eceff5] bg-[#f8f9fc] px-3 text-[12px] text-[#41495a] hover:bg-[#f1f4fa]"
                                 >
                                     <Workflow className="h-3.5 w-3.5" />
-                                    {label}
+                                    {action.label}
                                 </Button>
                             ))}
                         </div>
@@ -234,7 +268,17 @@ export default function EntreprisesPage() {
                                         <div>
                                             <div className="flex items-center gap-1.5">
                                                 <p className="text-[12px] font-medium text-[#252c3b]">{company.name}</p>
-                                                <ExternalLink className="h-3 w-3 text-[#50586a]" />
+                                                {company.website ? (
+                                                    <a
+                                                        href={company.website}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        title="Ouvrir le site de l'entreprise"
+                                                        className="text-[#50586a] hover:text-[#2f80ed]"
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                    </a>
+                                                ) : null}
                                             </div>
                                             <p className="text-[11px] text-[#7f8797]">{company.email ?? "-"}</p>
                                             <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8a92a3]">
@@ -264,7 +308,11 @@ export default function EntreprisesPage() {
                                             {company.status}
                                         </Badge>
 
-                                        <Button variant="outline" className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]">
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657] hover:bg-[#f1f4fa]"
+                                            onClick={() => setDetailCompany(company)}
+                                        >
                                             <Eye className="h-3.5 w-3.5" />
                                             Voir Profil
                                         </Button>
@@ -277,6 +325,60 @@ export default function EntreprisesPage() {
             </Card>
 
             <AddCompanyModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSubmit={handleAddCompany} />
+
+            <DetailModal
+                isOpen={detailCompany !== null}
+                onClose={() => setDetailCompany(null)}
+                title={detailCompany?.name ?? ""}
+                subtitle={detailCompany?.sector}
+                fields={
+                    detailCompany
+                        ? [
+                            { label: "Statut", value: detailCompany.status },
+                            { label: "Email", value: detailCompany.email ?? "-" },
+                            { label: "Téléphone", value: detailCompany.phone ?? "-" },
+                            {
+                                label: "Localisation",
+                                value: detailCompany.location ?? detailCompany.headquarters ?? "-",
+                            },
+                            { label: "Pays", value: detailCompany.country ?? "-" },
+                            { label: "Taille", value: detailCompany.companySize ?? "-" },
+                            {
+                                label: "Partenaire depuis",
+                                value: detailCompany.partnershipDate
+                                    ? new Date(detailCompany.partnershipDate).toLocaleDateString("fr-FR")
+                                    : "-",
+                            },
+                            {
+                                label: "Site web",
+                                value: detailCompany.website ? (
+                                    <a
+                                        href={detailCompany.website}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[#2f80ed] underline"
+                                    >
+                                        {detailCompany.website}
+                                    </a>
+                                ) : (
+                                    "-"
+                                ),
+                            },
+                            { label: "À propos", value: detailCompany.about ?? "-", full: true },
+                        ]
+                        : []
+                }
+                footer={
+                    detailCompany ? (
+                        <Button
+                            variant="outline"
+                            onClick={() => router.push(`/offres-emploi?entreprise=${encodeURIComponent(detailCompany.name)}`)}
+                        >
+                            Voir ses offres
+                        </Button>
+                    ) : null
+                }
+            />
         </div>
     )
 }
