@@ -52,6 +52,7 @@ export interface IJobOffer {
     endDate: Date;
     applicants: number;
     company?: ICompany | null;
+    image?: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

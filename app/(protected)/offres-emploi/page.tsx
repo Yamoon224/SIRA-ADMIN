@@ -137,7 +137,6 @@ export default function Page() {
 
     const handleAddJob = async () => {
         setIsAddModalOpen(false)
-        toast.success("Offre enregistrée")
         await loadData()
     }
 
@@ -273,12 +272,21 @@ export default function Page() {
                                     className="flex flex-col gap-3 rounded-[10px] border border-[#e7ebf3] bg-white px-3 py-3 lg:flex-row lg:items-center lg:justify-between"
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#4e8df3] to-[#6b47e8] text-white">
-                                            <Briefcase className="h-4 w-4" />
-                                        </div>
+                                        {job.image ? (
+                                            <img
+                                                src={job.image}
+                                                alt={job.title}
+                                                className="h-8 w-8 rounded-lg object-cover"
+                                                onError={(e) => { e.currentTarget.style.display = "none" }}
+                                            />
+                                        ) : (
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#4e8df3] to-[#6b47e8] text-white">
+                                                <Briefcase className="h-4 w-4" />
+                                            </div>
+                                        )}
                                         <div>
                                             <p className="text-[12px] font-medium text-[#252c3b]">{job.title}</p>
-                                            <p className="text-[11px] text-[#7f8797]">{job.company?.name ?? "-"}</p>
+                                            <p className="text-[11px] text-[#7f8797]">{job.company?.name ?? "Sans entreprise"}</p>
                                             <div className="mt-1 flex items-center gap-2 text-[10px] text-[#8a92a3]">
                                                 <span className="flex items-center gap-1">
                                                     <MapPin className="h-3 w-3" />
