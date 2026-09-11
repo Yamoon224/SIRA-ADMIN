@@ -18,6 +18,7 @@ import {
     Newspaper,
     ScrollText,
     GraduationCap,
+    Megaphone,
 } from "lucide-react"
 
 export const menuGroups = [
@@ -58,6 +59,11 @@ export const menuGroups = [
                 title: "Gestion Utilisateurs",
                 href: "/gestion-utilisateurs",
                 icon: UserCheck,
+            },
+            {
+                title: "Potentiels Partenaires",
+                href: "/partenaires-potentiels",
+                icon: Megaphone,
             },
         ],
     },

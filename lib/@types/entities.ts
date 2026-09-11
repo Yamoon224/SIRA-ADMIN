@@ -1,4 +1,4 @@
-import { CandidatureStatus, CompanyStatus, CVStatus, EventStatus, EventType, InterviewStatus, JobExperienceType, JobStatus, JobType, MatchingStatus, ScoringStatus, UserRole, UserStatus } from "./enums";
+import { CandidatureStatus, CompanyStatus, CVStatus, EventStatus, EventType, InterviewStatus, JobExperienceType, JobStatus, JobType, MailCampaignRecipientStatus, MailCampaignStatus, MatchingStatus, PotentialPartnerStatus, ScoringStatus, UserRole, UserStatus } from "./enums";
 
 export interface IUser {
     id: string;
@@ -221,4 +221,61 @@ export interface IAuditLog {
     ipAddress: string | null;
     userAgent: string | null;
     createdAt: Date;
+}
+
+// ─────────────────────────────────────────────
+export interface IPotentialPartner {
+    id: string;
+    ncc: string | null;
+    companyName: string;
+    email: string | null;
+    emailValid: boolean;
+    contactName: string | null;
+    contactPhone: string | null;
+    sector: string | null;
+    activityLabel: string | null;
+    city: string | null;
+    commune: string | null;
+    address: string | null;
+    companySize: string | null;
+    caTranche: string | null;
+    workforceTranche: string | null;
+    firstExerciseYear: string | null;
+    status: PotentialPartnerStatus;
+    source: string;
+    notes: string | null;
+    unsubscribedAt: Date | null;
+    lastContactedAt: Date | null;
+    createdAt: Date;
+}
+
+// ─────────────────────────────────────────────
+export interface IMailCampaignTargetFilters {
+    search?: string;
+    sector?: string;
+    city?: string;
+    companySize?: string;
+    status?: string;
+}
+
+export interface IMailCampaign {
+    id: string;
+    name: string;
+    subject: string;
+    bodyHtml: string;
+    status: MailCampaignStatus;
+    targetFilters: IMailCampaignTargetFilters | null;
+    totalRecipients: number;
+    sentCount: number;
+    failedCount: number;
+    sentAt: Date | null;
+    createdAt: Date;
+}
+
+export interface IMailCampaignRecipient {
+    id: string;
+    status: MailCampaignRecipientStatus;
+    errorMessage: string | null;
+    sentAt: Date | null;
+    partner: { id: string; companyName: string; email: string | null };
 }

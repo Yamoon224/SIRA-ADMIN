@@ -78,3 +78,27 @@ export enum UserStatus {
     ACTIVE = "ACTIVE",
     INACTIVE = "INACTIVE",
 }
+
+export enum PotentialPartnerStatus {
+    NEW = "new",
+    CONTACTED = "contacted",
+    RESPONDED = "responded",
+    INTERESTED = "interested",
+    NOT_INTERESTED = "not_interested",
+    CONVERTED = "converted",
+    DO_NOT_CONTACT = "do_not_contact",
+}
+
+export enum MailCampaignStatus {
+    DRAFT = "draft",
+    SENDING = "sending",
+    SENT = "sent",
+    FAILED = "failed",
+}
+
+export enum MailCampaignRecipientStatus {
+    PENDING = "pending",
+    SENT = "sent",
+    FAILED = "failed",
+    SKIPPED = "skipped",
+}
