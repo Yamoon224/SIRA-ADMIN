@@ -9,6 +9,7 @@ import {
     MapPin,
     Plus,
     Search,
+    Trash2,
     TrendingUp,
     Users,
     Workflow,
@@ -98,6 +99,19 @@ export default function EntreprisesPage() {
         setIsAddModalOpen(false)
         toast.success("Entreprise enregistrée")
         await loadData()
+    }
+
+    const handleDeleteCompany = async (company: ICompany) => {
+        if (!window.confirm(`Supprimer définitivement l'entreprise "${company.name}" ? Cette action supprime aussi ses offres d'emploi et candidatures associées.`)) return
+        try {
+            await companyService.deleteCompany(company.id)
+            setCompanies((prev) => prev.filter((c) => c.id !== company.id))
+            setDetailCompany((prev) => (prev?.id === company.id ? null : prev))
+            toast.success("Entreprise supprimée")
+        } catch (err) {
+            console.error("[entreprises] delete error:", err)
+            toast.error("Impossible de supprimer cette entreprise")
+        }
     }
 
     if (loading) {
@@ -316,6 +330,15 @@ export default function EntreprisesPage() {
                                             <Eye className="h-3.5 w-3.5" />
                                             Voir Profil
                                         </Button>
+
+                                        <Button
+                                            variant="outline"
+                                            className="h-8 rounded-lg border-[#f3d3d3] bg-[#fdf4f4] px-3 text-[11px] text-[#c0392b] hover:bg-[#fbe7e7]"
+                                            onClick={() => handleDeleteCompany(company)}
+                                        >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                            Supprimer
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
@@ -370,12 +393,21 @@ export default function EntreprisesPage() {
                 }
                 footer={
                     detailCompany ? (
-                        <Button
-                            variant="outline"
-                            onClick={() => router.push(`/offres-emploi?entreprise=${encodeURIComponent(detailCompany.name)}`)}
-                        >
-                            Voir ses offres
-                        </Button>
+                        <>
+                            <Button
+                                variant="destructive"
+                                onClick={() => handleDeleteCompany(detailCompany)}
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Supprimer
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => router.push(`/offres-emploi?entreprise=${encodeURIComponent(detailCompany.name)}`)}
+                            >
+                                Voir ses offres
+                            </Button>
+                        </>
                     ) : null
                 }
             />
