@@ -88,6 +88,7 @@ export default function MailCampaignsPage() {
     const [deleteTarget, setDeleteTarget] = useState<IMailCampaign | null>(null)
     const [sendTarget, setSendTarget] = useState<IMailCampaign | null>(null)
     const [sending, setSending] = useState(false)
+    const [resumingId, setResumingId] = useState<string | null>(null)
     const [testEmail, setTestEmail] = useState("")
     const [testTarget, setTestTarget] = useState<IMailCampaign | null>(null)
     const [testSending, setTestSending] = useState(false)
@@ -237,6 +238,23 @@ export default function MailCampaignsPage() {
         }
     }
 
+    // L'envoi tourne en boucle synchrone côté serveur (pas de worker sur
+    // l'hébergement mutualisé) : une requête HTTP trop longue peut expirer
+    // avant que tous les destinataires soient traités. Rappeler /send sur
+    // une campagne déjà "sending" reprend uniquement les PENDING restants.
+    const handleResume = async (campaign: IMailCampaign) => {
+        setResumingId(campaign.id)
+        try {
+            await mailCampaignService.sendCampaign(campaign.id, campaign.targetFilters ?? {})
+            await loadCampaigns()
+        } catch (err: any) {
+            console.error("[campagnes] resume error:", err)
+            toast.error(err?.message || "Échec de la reprise de l'envoi")
+        } finally {
+            setResumingId(null)
+        }
+    }
+
     const openRecipients = async (campaign: IMailCampaign) => {
         setRecipientsOf(campaign)
         setRecipientsLoading(true)
@@ -318,6 +336,16 @@ export default function MailCampaignsPage() {
                                                         <Trash2 className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </>
+                                            )}
+                                            {campaign.status === "sending" && campaign.sentCount + campaign.failedCount < campaign.totalRecipients && (
+                                                <Button
+                                                    className="h-8 rounded-lg bg-[#0f56d9] px-3 text-[11px] text-white hover:bg-[#0a4cc5]"
+                                                    disabled={resumingId === campaign.id}
+                                                    onClick={() => handleResume(campaign)}
+                                                >
+                                                    <Send className="h-3.5 w-3.5" />
+                                                    {resumingId === campaign.id ? "Envoi..." : "Continuer l'envoi"}
+                                                </Button>
                                             )}
                                             {campaign.status !== "draft" && (
                                                 <Button variant="outline" className="h-8 rounded-lg border-[#ebedf4] bg-[#f8f9fc] px-3 text-[11px] text-[#3f4657]" onClick={() => openRecipients(campaign)}>
