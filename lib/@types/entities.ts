@@ -1,4 +1,4 @@
-import { CandidatureStatus, CompanyStatus, CVStatus, EventStatus, EventType, InterviewStatus, JobExperienceType, JobStatus, JobType, MailCampaignRecipientStatus, MailCampaignStatus, MatchingStatus, PotentialPartnerStatus, ScoringStatus, UserRole, UserStatus } from "./enums";
+import { CandidatureStatus, CompanyStatus, CVStatus, EventStatus, EventType, InfluencerPayoutStatus, InfluencerStatus, InterviewStatus, JobExperienceType, JobStatus, JobType, MailCampaignRecipientStatus, MailCampaignStatus, MatchingStatus, PotentialPartnerStatus, PromoCampaignStatus, PromoDiscountType, PromoRedemptionStatus, ScoringStatus, UserRole, UserStatus } from "./enums";
 
 export interface IUser {
     id: string;
@@ -279,4 +279,90 @@ export interface IMailCampaignRecipient {
     errorMessage: string | null;
     sentAt: Date | null;
     partner: { id: string; companyName: string; email: string | null };
+}
+
+// ─────────────────────────────────────────────
+// Promotions — campagnes de codes promo, codes, influenceurs et versements
+// ─────────────────────────────────────────────
+export interface IPromoCampaign {
+    id: string;
+    name: string;
+    description: string | null;
+    discountType: PromoDiscountType;
+    discountValue: number;
+    applicableUserTypes: ("USER" | "ENTREPRISE")[];
+    applicablePlanIds: string[] | null;
+    minPlanPrice: number | null;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    status: PromoCampaignStatus;
+    codesCount?: number;
+    createdAt: Date;
+}
+
+export interface IPromoCode {
+    id: string;
+    campaignId: string;
+    campaignName?: string;
+    influencerId: string | null;
+    influencerName?: string | null;
+    code: string;
+    discountType: PromoDiscountType | null;
+    discountValue: number | null;
+    commissionRate: number | null;
+    maxUses: number | null;
+    usedCount: number;
+    maxUsesPerUser: number;
+    startsAt: Date | null;
+    endsAt: Date | null;
+    isActive: boolean;
+    createdAt: Date;
+}
+
+export interface IPromoCodeRedemption {
+    id: string;
+    promoCodeId: string;
+    promoCode?: string;
+    influencerId: string | null;
+    userId: string | null;
+    userName?: string | null;
+    planId: string | null;
+    planName?: string | null;
+    originalAmount: number;
+    discountAmount: number;
+    finalAmount: number;
+    currency: string;
+    commissionRate: number | null;
+    commissionAmount: number | null;
+    status: PromoRedemptionStatus;
+    payoutId: string | null;
+    redeemedAt: Date | null;
+    createdAt: Date;
+}
+
+export interface IInfluencer {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    defaultCommissionRate: number | null;
+    notes: string | null;
+    status: InfluencerStatus;
+    promoCodesCount?: number;
+    unpaidBalance: number;
+    createdAt: Date;
+}
+
+export interface IInfluencerPayout {
+    id: string;
+    influencerId: string;
+    influencerName?: string;
+    amount: number;
+    currency: string;
+    status: InfluencerPayoutStatus;
+    paymentMethod: string | null;
+    paymentReference: string | null;
+    notes: string | null;
+    paidAt: Date | null;
+    createdAt: Date;
 }

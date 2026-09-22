@@ -102,3 +102,32 @@ export enum MailCampaignRecipientStatus {
     FAILED = "failed",
     SKIPPED = "skipped",
 }
+
+export enum PromoDiscountType {
+    PERCENTAGE = "PERCENTAGE",
+    FIXED = "FIXED",
+}
+
+export enum PromoCampaignStatus {
+    DRAFT = "DRAFT",
+    ACTIVE = "ACTIVE",
+    PAUSED = "PAUSED",
+    ENDED = "ENDED",
+}
+
+export enum PromoRedemptionStatus {
+    PENDING = "PENDING",
+    CONFIRMED = "CONFIRMED",
+    CANCELLED = "CANCELLED",
+}
+
+export enum InfluencerStatus {
+    ACTIVE = "ACTIVE",
+    INACTIVE = "INACTIVE",
+}
+
+export enum InfluencerPayoutStatus {
+    PENDING = "PENDING",
+    PAID = "PAID",
+    CANCELLED = "CANCELLED",
+}

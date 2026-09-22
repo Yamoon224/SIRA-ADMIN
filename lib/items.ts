@@ -19,6 +19,7 @@ import {
     ScrollText,
     GraduationCap,
     Megaphone,
+    BadgePercent,
 } from "lucide-react"
 
 export const menuGroups = [
@@ -39,6 +40,11 @@ export const menuGroups = [
                 title: "Comptabilité",
                 href: "/comptabilite",
                 icon: CircleDollarSign,
+            },
+            {
+                title: "Promotions",
+                href: "/promotions",
+                icon: BadgePercent,
             },
         ],
     },
