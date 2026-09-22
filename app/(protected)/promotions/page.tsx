@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { DataPagination, DEFAULT_PAGE_SIZE } from "@/components/ui/data-pagination"
 import { promoCampaignService } from "@/lib/services/promo-campaign.service"
+import { subscriptionService, SubscriptionPlanRow } from "@/lib/services/subscription.service"
 import type { IPromoCampaign } from "@/lib/@types/entities"
 import { PromoCampaignStatus, PromoDiscountType } from "@/lib/@types/enums"
 
@@ -55,6 +56,8 @@ type FormState = {
     discountType: PromoDiscountType
     discountValue: string
     applicableUserTypes: ("USER" | "ENTREPRISE")[]
+    /** null = tous les forfaits des types ciblés ; sinon liste blanche de plan ids. */
+    applicablePlanIds: string[] | null
     status: PromoCampaignStatus
 }
 
@@ -64,6 +67,7 @@ const EMPTY_FORM: FormState = {
     discountType: PromoDiscountType.PERCENTAGE,
     discountValue: "",
     applicableUserTypes: ["USER"],
+    applicablePlanIds: null,
     status: PromoCampaignStatus.DRAFT,
 }
 
@@ -85,6 +89,17 @@ export default function PromotionsPage() {
     const [form, setForm] = useState<FormState>(EMPTY_FORM)
     const [saving, setSaving] = useState(false)
     const [deleteTarget, setDeleteTarget] = useState<IPromoCampaign | null>(null)
+    const [plans, setPlans] = useState<SubscriptionPlanRow[]>([])
+
+    useEffect(() => {
+        Promise.all([subscriptionService.getPlans("USER"), subscriptionService.getPlans("ENTREPRISE")])
+            .then(([userPlans, entreprisePlans]) => {
+                const a = (Array.isArray(userPlans) ? userPlans : (userPlans as any)?.data) ?? []
+                const b = (Array.isArray(entreprisePlans) ? entreprisePlans : (entreprisePlans as any)?.data) ?? []
+                setPlans([...a, ...b])
+            })
+            .catch((err) => console.error("[promotions] plans load error:", err))
+    }, [])
 
     const load = async () => {
         setLoading(true)
@@ -119,23 +134,48 @@ export default function PromotionsPage() {
             discountType: campaign.discountType,
             discountValue: String(campaign.discountValue),
             applicableUserTypes: campaign.applicableUserTypes,
+            applicablePlanIds: campaign.applicablePlanIds,
             status: campaign.status,
         })
         setFormOpen(true)
     }
 
     const toggleUserType = (type: "USER" | "ENTREPRISE") => {
-        setForm((f) => ({
-            ...f,
-            applicableUserTypes: f.applicableUserTypes.includes(type)
+        setForm((f) => {
+            const nextTypes = f.applicableUserTypes.includes(type)
                 ? f.applicableUserTypes.filter((t) => t !== type)
-                : [...f.applicableUserTypes, type],
-        }))
+                : [...f.applicableUserTypes, type]
+            // Un forfait déjà coché du type qu'on vient de décocher n'a plus
+            // de sens dans la sélection - on le retire pour rester cohérent.
+            const stillEligible = plans.filter((p) => nextTypes.includes(p.userType)).map((p) => p.id)
+            return {
+                ...f,
+                applicableUserTypes: nextTypes,
+                applicablePlanIds: f.applicablePlanIds ? f.applicablePlanIds.filter((id) => stillEligible.includes(id)) : null,
+            }
+        })
+    }
+
+    // Forfaits proposés dans le sélecteur : uniquement ceux des types de
+    // compte actuellement cochés, pour ne pas pouvoir cocher un forfait
+    // Entreprise sur une campagne réservée aux comptes Standard.
+    const eligiblePlans = plans.filter((p) => form.applicableUserTypes.includes(p.userType))
+
+    const togglePlan = (planId: string) => {
+        setForm((f) => {
+            const current = f.applicablePlanIds ?? []
+            const next = current.includes(planId) ? current.filter((id) => id !== planId) : [...current, planId]
+            return { ...f, applicablePlanIds: next }
+        })
     }
 
     const handleSave = async () => {
         if (!form.name.trim() || !form.discountValue || form.applicableUserTypes.length === 0) {
             toast.error("Nom, réduction et au moins un type de compte ciblé sont requis")
+            return
+        }
+        if (form.applicablePlanIds !== null && form.applicablePlanIds.length === 0) {
+            toast.error("Sélectionnez au moins un forfait, ou choisissez « Tous les forfaits »")
             return
         }
         setSaving(true)
@@ -146,6 +186,7 @@ export default function PromotionsPage() {
                 discountType: form.discountType,
                 discountValue: Number(form.discountValue),
                 applicableUserTypes: form.applicableUserTypes,
+                applicablePlanIds: form.applicablePlanIds,
                 status: form.status,
             }
             if (form.id) {
@@ -225,6 +266,10 @@ export default function PromotionsPage() {
                                         </div>
                                         <p className="mt-0.5 text-[11px] text-[#7f8797]">
                                             {campaign.applicableUserTypes.map((t) => (t === "USER" ? "Standard" : "Entreprise")).join(" · ")}
+                                            {" · "}
+                                            {campaign.applicablePlanIds === null
+                                                ? "Tous les forfaits"
+                                                : `${campaign.applicablePlanIds.length} forfait${campaign.applicablePlanIds.length > 1 ? "s" : ""} spécifique${campaign.applicablePlanIds.length > 1 ? "s" : ""}`}
                                             {" · "}
                                             {campaign.codesCount ?? 0} code{(campaign.codesCount ?? 0) > 1 ? "s" : ""}
                                         </p>
@@ -307,6 +352,47 @@ export default function PromotionsPage() {
                                     Entreprise
                                 </label>
                             </div>
+                        </div>
+                        <div>
+                            <Label className="text-[12px]">Forfaits ciblés *</Label>
+                            <div className="mt-1.5 flex items-center gap-4">
+                                <label className="flex items-center gap-2 text-[12px] text-[#3f4657]">
+                                    <input
+                                        type="radio"
+                                        checked={form.applicablePlanIds === null}
+                                        onChange={() => setForm({ ...form, applicablePlanIds: null })}
+                                    />
+                                    Tous les forfaits
+                                </label>
+                                <label className="flex items-center gap-2 text-[12px] text-[#3f4657]">
+                                    <input
+                                        type="radio"
+                                        checked={form.applicablePlanIds !== null}
+                                        onChange={() => setForm({ ...form, applicablePlanIds: [] })}
+                                    />
+                                    Forfaits spécifiques
+                                </label>
+                            </div>
+                            {form.applicablePlanIds !== null && (
+                                <div className="mt-2 space-y-1.5 rounded-lg border border-[#e7ebf3] bg-[#f8f9fc] p-2">
+                                    {eligiblePlans.length === 0 ? (
+                                        <p className="px-1 py-1 text-[11px] text-[#8a92a3]">Aucun forfait pour les comptes ciblés ci-dessus.</p>
+                                    ) : (
+                                        eligiblePlans.map((plan) => (
+                                            <label key={plan.id} className="flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[12px] hover:bg-white">
+                                                <span className="flex items-center gap-2">
+                                                    <Checkbox checked={form.applicablePlanIds?.includes(plan.id) ?? false} onCheckedChange={() => togglePlan(plan.id)} />
+                                                    {plan.name}
+                                                    <Badge className="rounded-full border-0 bg-[#eef2ff] px-1.5 py-0 text-[9px] text-[#3350c7]">
+                                                        {plan.userType === "USER" ? "Standard" : "Entreprise"}
+                                                    </Badge>
+                                                </span>
+                                                <span className="text-[#7f8797]">{Number(plan.price).toLocaleString("fr-FR")} FCFA</span>
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <div>
                             <Label className="text-[12px]">Statut</Label>

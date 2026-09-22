@@ -31,7 +31,20 @@ export interface SubscriptionRow {
     }
 }
 
+export interface SubscriptionPlanRow {
+    id: string
+    name: string
+    price: number
+    billingPeriod: string
+    userType: "USER" | "ENTREPRISE"
+    isActive: boolean
+}
+
 export const subscriptionService = {
+    /** Plans actifs d'un type de compte — utilisé pour cibler des campagnes promo sur des forfaits précis. */
+    getPlans: (userType: "USER" | "ENTREPRISE") =>
+        apiRequest<SubscriptionPlanRow[]>({ endpoint: `/subscriptions/plans?userType=${userType}`, method: "GET" }),
+
     getAdminStats: () =>
         apiRequest<SubscriptionStats>({ endpoint: "/subscriptions/admin/stats", method: "GET" }),
 

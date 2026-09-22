@@ -9,7 +9,8 @@ export interface PromoCampaignInput {
     discountType: PromoDiscountType
     discountValue: number
     applicableUserTypes: ("USER" | "ENTREPRISE")[]
-    applicablePlanIds?: string[]
+    /** null = tous les forfaits des types ciblés ; sinon liste blanche de plan ids. */
+    applicablePlanIds?: string[] | null
     minPlanPrice?: number
     startsAt?: string
     endsAt?: string

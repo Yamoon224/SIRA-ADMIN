@@ -40,6 +40,7 @@ type FormState = {
     influencerId: string
     maxUses: string
     maxUsesPerUser: string
+    endsAt: string
     isActive: boolean
 }
 
@@ -48,7 +49,14 @@ const EMPTY_FORM: FormState = {
     influencerId: "",
     maxUses: "",
     maxUsesPerUser: "1",
+    endsAt: "",
     isActive: true,
+}
+
+/** input[type=date] veut "YYYY-MM-DD" ; l'API renvoie un datetime ISO complet. */
+function toDateInputValue(value: unknown): string {
+    if (!value) return ""
+    return String(value).slice(0, 10)
 }
 
 export default function PromoCampaignDetailPage() {
@@ -107,6 +115,7 @@ export default function PromoCampaignDetailPage() {
             influencerId: code.influencerId ?? "",
             maxUses: code.maxUses !== null ? String(code.maxUses) : "",
             maxUsesPerUser: String(code.maxUsesPerUser),
+            endsAt: toDateInputValue(code.endsAt),
             isActive: code.isActive,
         })
         setFormOpen(true)
@@ -126,6 +135,13 @@ export default function PromoCampaignDetailPage() {
             toast.error("Le code est requis")
             return
         }
+        // Un code doit être borné d'une façon ou d'une autre - vérifié aussi
+        // côté serveur (PromoCodeService::createCode), mais on évite l'aller-
+        // retour réseau pour l'erreur la plus fréquente.
+        if (!form.id && !form.maxUses && !form.endsAt) {
+            toast.error("Indiquez une date d'expiration et/ou une limite d'utilisation")
+            return
+        }
         setSaving(true)
         try {
             if (form.id) {
@@ -133,6 +149,7 @@ export default function PromoCampaignDetailPage() {
                     influencerId: form.influencerId || null,
                     maxUses: form.maxUses ? Number(form.maxUses) : null,
                     maxUsesPerUser: Number(form.maxUsesPerUser) || 1,
+                    endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null,
                     isActive: form.isActive,
                 })
                 toast.success("Code mis à jour")
@@ -143,6 +160,7 @@ export default function PromoCampaignDetailPage() {
                     influencerId: form.influencerId || undefined,
                     maxUses: form.maxUses ? Number(form.maxUses) : undefined,
                     maxUsesPerUser: Number(form.maxUsesPerUser) || 1,
+                    endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
                 })
                 toast.success("Code créé")
             }
@@ -221,6 +239,7 @@ export default function PromoCampaignDetailPage() {
                                             {code.usedCount} utilisation{code.usedCount > 1 ? "s" : ""}
                                             {code.maxUses !== null ? ` / ${code.maxUses}` : " (illimité)"}
                                             {" · "}max {code.maxUsesPerUser}/utilisateur
+                                            {code.endsAt ? ` · expire le ${new Date(code.endsAt).toLocaleDateString("fr-FR")}` : ""}
                                         </p>
                                     </div>
 
@@ -301,6 +320,13 @@ export default function PromoCampaignDetailPage() {
                                 <Label className="text-[12px]">Max par utilisateur</Label>
                                 <Input type="number" value={form.maxUsesPerUser} onChange={(e) => setForm({ ...form, maxUsesPerUser: e.target.value })} className="mt-1" />
                             </div>
+                        </div>
+                        <div>
+                            <Label className="text-[12px]">Date d'expiration</Label>
+                            <Input type="date" value={form.endsAt} onChange={(e) => setForm({ ...form, endsAt: e.target.value })} className="mt-1" />
+                            <p className="mt-1 text-[11px] text-[#8a92a3]">
+                                Le code doit avoir une date d'expiration et/ou un quota global - au moins l'un des deux est requis à la création.
+                            </p>
                         </div>
                         {form.id && (
                             <label className="flex items-center gap-2 text-[12px] text-[#3f4657]">
