@@ -36,8 +36,8 @@ function initials(name: string) {
     return name.split(/[\s.\-_]/).map((p) => p[0]).filter(Boolean).join("").toUpperCase().slice(0, 2)
 }
 
-function baseName(fileName: string) {
-    return fileName.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ")
+function baseName(fileName: string | null | undefined) {
+    return (fileName ?? "").replace(/\.[^.]+$/, "").replace(/[-_]/g, " ")
 }
 
 function formatDate(iso: string) {
@@ -63,7 +63,15 @@ export default function Page() {
             ])
             setCvStats((statsRes as any)?.data ?? statsRes)
             const items = (recentRes as any)?.data ?? recentRes ?? []
-            setRecentList(Array.isArray(items) ? items : [])
+            // Les analyses journalisées depuis le site public peuvent n'avoir
+            // aucune recommandation (null côté API) : on normalise ici.
+            setRecentList(
+                (Array.isArray(items) ? items : []).map((item: ICVAnalysis) => ({
+                    ...item,
+                    fileName: item.fileName ?? "",
+                    recommendations: Array.isArray(item.recommendations) ? item.recommendations : [],
+                })),
+            )
         } catch (err) {
             console.error("[analyze-ai] load error:", err)
         } finally {
@@ -423,7 +431,7 @@ export default function Page() {
                                                 <p className="text-[10px] text-[#8a92a3]">Score</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[13px] font-semibold text-[#24b36f]">{analysis.recommendations.length}</p>
+                                                <p className="text-[13px] font-semibold text-[#24b36f]">{analysis.recommendations?.length ?? 0}</p>
                                                 <p className="text-[10px] text-[#8a92a3]">Recommandations</p>
                                             </div>
                                             <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${isCompleted ? "bg-[#24bf7e] text-white" : "bg-[#edf0f6] text-[#3d4354]"}`}>
@@ -465,7 +473,7 @@ export default function Page() {
                                 value:
                                     (detailAnalysis.recommendations ?? []).length > 0 ? (
                                         <ul className="space-y-1">
-                                            {detailAnalysis.recommendations.map((rec, i) => (
+                                            {(detailAnalysis.recommendations ?? []).map((rec, i) => (
                                                 <li key={i}>• {rec}</li>
                                             ))}
                                         </ul>
