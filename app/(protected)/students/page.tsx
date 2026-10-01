@@ -197,7 +197,7 @@ export default function Page() {
                 <KpiCard
                     title="Total Candidats"
                     value={studentStats ? studentStats.total.toLocaleString("fr-FR") : "-"}
-                    note="+12% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Users}
                     borderClass="border-[#d9dce6]"
@@ -206,7 +206,7 @@ export default function Page() {
                 <KpiCard
                     title="Profils Actifs"
                     value={studentStats ? String(studentStats.active) : "-"}
-                    note="+8% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Award}
                     borderClass="border-[#55d5ac]"
@@ -215,7 +215,7 @@ export default function Page() {
                 <KpiCard
                     title="Inactifs"
                     value={studentStats ? String(studentStats.inactive) : "-"}
-                    note="+3% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Sparkles}
                     borderClass="border-[#a777ff]"
@@ -224,7 +224,7 @@ export default function Page() {
                 <KpiCard
                     title="Nouveaux ce mois"
                     value={studentStats ? String(studentStats.newThisMonth) : "-"}
-                    note="+15% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={TrendingUp}
                     borderClass="border-[#f0b475]"

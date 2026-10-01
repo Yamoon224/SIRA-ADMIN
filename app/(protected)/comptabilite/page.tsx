@@ -29,23 +29,7 @@ import { DetailModal } from "@/components/modals/detail-modal"
 import { exportToCSV } from "@/lib/export-utils"
 import { subscriptionService, type SubscriptionStats, type SubscriptionRow } from "@/lib/services/subscription.service"
 
-const FALLBACK_REVENUE_DATA = [
-    { month: "Jan", value: 34000 },
-    { month: "Fev", value: 42000 },
-    { month: "Mar", value: 38500 },
-    { month: "Avr", value: 45500 },
-    { month: "Mai", value: 48200 },
-    { month: "Juin", value: 52230 },
-]
-
-const FALLBACK_SUBSCRIPTIONS_DATA = [
-    { month: "Jan", value: 1140 },
-    { month: "Fev", value: 1200 },
-    { month: "Mar", value: 1180 },
-    { month: "Avr", value: 1240 },
-    { month: "Mai", value: 1300 },
-    { month: "Juin", value: 1350 },
-]
+type TrendPoint = { month: string; value: number }
 
 const STATUS_MAP: Record<string, { label: string; cls: string }> = {
     ACTIVE: { label: "Actif", cls: "bg-[#e1f8e8] text-[#33b06b]" },
@@ -59,8 +43,8 @@ export default function Page() {
     const [detailSub, setDetailSub] = useState<SubscriptionRow | null>(null)
     const [subStats, setSubStats] = useState<SubscriptionStats | null>(null)
     const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([])
-    const [revenueData, setRevenueData] = useState(FALLBACK_REVENUE_DATA)
-    const [subscriptionsData, setSubscriptionsData] = useState(FALLBACK_SUBSCRIPTIONS_DATA)
+    const [revenueData, setRevenueData] = useState<TrendPoint[]>([])
+    const [subscriptionsData, setSubscriptionsData] = useState<TrendPoint[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -77,9 +61,9 @@ export default function Page() {
                 const items = Array.isArray(subsData) ? subsData : (subsData as any)?.data ?? []
                 setSubscriptions(items)
                 const rev = (revRes as any)?.data ?? revRes
-                if (Array.isArray(rev) && rev.length > 0) setRevenueData(rev)
+                if (Array.isArray(rev)) setRevenueData(rev)
                 const subTrend = (subTrendRes as any)?.data ?? subTrendRes
-                if (Array.isArray(subTrend) && subTrend.length > 0) setSubscriptionsData(subTrend)
+                if (Array.isArray(subTrend)) setSubscriptionsData(subTrend)
             } catch (err) {
                 console.error("[comptabilite] load error:", err)
             } finally {
@@ -180,11 +164,10 @@ export default function Page() {
                                         tick={{ fill: "#7f8797", fontSize: 11 }}
                                         axisLine={false}
                                         tickLine={false}
-                                        ticks={[0, 15000, 30000, 45000, 60000]}
-                                        tickFormatter={(value) => `€${value.toLocaleString()}`}
-                                        domain={[0, 60000]}
+                                        width={70}
+                                        tickFormatter={(value) => value.toLocaleString("fr-FR")}
                                     />
-                                    <Tooltip formatter={(value: number) => [`€${value.toLocaleString()}`, "Revenus"]} />
+                                    <Tooltip formatter={(value: number) => [`${value.toLocaleString("fr-FR")} FCFA`, "Revenus"]} />
                                     <Line type="monotone" dataKey="value" stroke="#2b78f6" strokeWidth={2.4} dot={false} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -206,8 +189,7 @@ export default function Page() {
                                         tick={{ fill: "#7f8797", fontSize: 11 }}
                                         axisLine={false}
                                         tickLine={false}
-                                        ticks={[0, 350, 700, 1050, 1400]}
-                                        domain={[0, 1400]}
+                                        allowDecimals={false}
                                     />
                                     <Tooltip formatter={(value: number) => [value, "Abonnements"]} />
                                     <Bar dataKey="value" fill="#3b7ddd" radius={[2, 2, 0, 0]} maxBarSize={56} />

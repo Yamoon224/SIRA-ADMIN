@@ -145,7 +145,7 @@ export default function EntreprisesPage() {
                 <KpiCard
                     title="Total Entreprises"
                     value={stats ? stats.total.toLocaleString("fr-FR") : "-"}
-                    note="+8% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Building2}
                     borderClass="border-[#d9dce6]"
@@ -154,7 +154,7 @@ export default function EntreprisesPage() {
                 <KpiCard
                     title="Actives"
                     value={stats ? String(stats.active) : "-"}
-                    note="+12% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={TrendingUp}
                     borderClass="border-[#55d5ac]"
@@ -163,7 +163,7 @@ export default function EntreprisesPage() {
                 <KpiCard
                     title="Inactives"
                     value={stats ? String(stats.inactive) : "-"}
-                    note="+5% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Briefcase}
                     borderClass="border-[#f0b475]"
@@ -172,7 +172,7 @@ export default function EntreprisesPage() {
                 <KpiCard
                     title="Nouvelles ce mois"
                     value={stats ? String(stats.newThisMonth) : "-"}
-                    note="+18% par rapport au mois dernier"
+                    note=""
                     noteClass="text-[#23b26f]"
                     icon={Users}
                     borderClass="border-[#a777ff]"

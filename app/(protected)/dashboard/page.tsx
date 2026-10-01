@@ -4,58 +4,62 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Users, Building2, Briefcase, TrendingUp, FileText, Award, ExternalLink, Binary } from "lucide-react"
 import { StatsCard } from "@/components/dashboard/stats-card"
-import { PerformanceChart } from "@/components/dashboard/performance-chart"
+import { PerformanceChart, type AiToolUsage } from "@/components/dashboard/performance-chart"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { dashboardService } from "@/lib/services/dashboard.service"
-import { analyticsService } from "@/lib/services/analytics.service"
+
+type MonthlyStats = {
+    newCandidates: number
+    newCompanies: number
+    cvAnalyzed: number
+    newJobOffers: number
+    applications: number
+}
+
+type DashboardStats = {
+    activeStudents: number
+    partnerCompanies: number
+    analyzedCVs: number
+    jobOffers: number
+    monthly: MonthlyStats | null
+    aiTools: AiToolUsage[]
+}
+
+const fmt = (value: number) => value.toLocaleString("fr-FR")
+/** Volume créé depuis le 1er du mois ; rien tant que les chiffres ne sont pas chargés. */
+const thisMonth = (value: number | undefined) => (value === undefined ? undefined : `+${fmt(value)} ce mois-ci`)
 
 export default function Page() {
     const router = useRouter()
-    const [stats, setStats] = useState<{
-        activeStudents: number
-        partnerCompanies: number
-        analyzedCVs: number
-        jobOffers: number
-    }>({
-        activeStudents: 0,
-        partnerCompanies: 0,
-        analyzedCVs: 0,
-        jobOffers: 0,
-    })
-
-    const [growthKPIs, setGrowthKPIs] = useState<{
-        registrations: number
-        cvAnalyzed: number
-        interviewsDone: number
-    } | null>(null)
+    // `null` tant que l'API n'a pas répondu : on affiche « - » plutôt qu'un
+    // chiffre inventé, et un message si le chargement échoue.
+    const [stats, setStats] = useState<DashboardStats | null>(null)
+    const [loadError, setLoadError] = useState(false)
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const data = await dashboardService.getAdminStats()
+        dashboardService
+            .getAdminStats()
+            .then((data) => {
                 const payload = (data as any)?.data ?? data
-                if (payload?.activeStudents !== undefined) {
-                    setStats(payload)
-                }
-            } catch (error) {
+                if (payload?.activeStudents === undefined) throw new Error("Réponse inattendue")
+                setStats({
+                    activeStudents: payload.activeStudents ?? 0,
+                    partnerCompanies: payload.partnerCompanies ?? 0,
+                    analyzedCVs: payload.analyzedCVs ?? 0,
+                    jobOffers: payload.jobOffers ?? 0,
+                    monthly: payload.monthly ?? null,
+                    aiTools: Array.isArray(payload.aiTools) ? payload.aiTools : [],
+                })
+            })
+            .catch((error) => {
                 console.error("Error fetching stats:", error)
-            }
-        }
-
-        const fetchKPIs = async () => {
-            try {
-                const res = await analyticsService.getKPIs()
-                const kpis = (res as any)?.data ?? res
-                if (kpis) setGrowthKPIs(kpis)
-            } catch (error) {
-                console.error("Error fetching KPIs:", error)
-            }
-        }
-
-        fetchStats()
-        fetchKPIs()
+                setLoadError(true)
+            })
     }, [])
+
+    const value = (n: number | undefined) => (n === undefined ? "-" : fmt(n))
+    const monthly = stats?.monthly ?? undefined
 
     const quickActions = [
         { icon: Binary, label: "Analyser un CV", href: "/analyze-ai" },
@@ -83,39 +87,45 @@ export default function Page() {
                 <div className="pointer-events-none absolute" />
             </div>
 
+            {loadError && (
+                <p role="alert" className="rounded-[10px] border border-[#f3c7c7] bg-[#fdf3f3] px-4 py-3 text-[12px] text-[#b42318]">
+                    Les statistiques n'ont pas pu être chargées. Recharge la page pour réessayer.
+                </p>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <StatsCard
                     title="Utilisateurs Actifs"
-                    value={stats.activeStudents.toLocaleString()}
+                    value={value(stats?.activeStudents)}
                     subtitle="Étudiants et candidats"
-                    growth="+12% par rapport au mois dernier"
+                    growth={thisMonth(monthly?.newCandidates)}
                     icon={Users}
                     accentClass="border-[#67a1ff]"
                     iconClass="bg-[#4a89ef]"
                 />
                 <StatsCard
                     title="Entreprises Partenaires"
-                    value={stats.partnerCompanies.toLocaleString()}
+                    value={value(stats?.partnerCompanies)}
                     subtitle="Recruteurs actifs"
-                    growth="+8% par rapport au mois dernier"
+                    growth={thisMonth(monthly?.newCompanies)}
                     icon={Building2}
                     accentClass="border-[#55d5ac]"
                     iconClass="bg-[#2db77f]"
                 />
                 <StatsCard
                     title="CV Analysés (IA)"
-                    value={stats.analyzedCVs.toLocaleString()}
-                    subtitle="Ce mois"
-                    growth="+23% par rapport au mois dernier"
+                    value={value(stats?.analyzedCVs)}
+                    subtitle="Analyses terminées, au total"
+                    growth={thisMonth(monthly?.cvAnalyzed)}
                     icon={FileText}
                     accentClass="border-[#a777ff]"
                     iconClass="bg-[#8550e9]"
                 />
                 <StatsCard
                     title="Offres d'Emploi"
-                    value={stats.jobOffers.toLocaleString()}
+                    value={value(stats?.jobOffers)}
                     subtitle="Annonces actives"
-                    growth="+5% par rapport au mois dernier"
+                    growth={thisMonth(monthly?.newJobOffers)}
                     icon={Briefcase}
                     accentClass="border-[#f0b475]"
                     iconClass="bg-[#ee9b3b]"
@@ -124,7 +134,7 @@ export default function Page() {
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div className="xl:col-span-2">
-                    <PerformanceChart />
+                    <PerformanceChart tools={loadError ? [] : (stats?.aiTools ?? null)} />
                 </div>
 
                 <Card className="rounded-[10px] border border-[#d9dce6] bg-white py-2 shadow-none">
@@ -152,35 +162,24 @@ export default function Page() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-[31px] font-semibold text-[#242a38]">
                             <TrendingUp className="h-4 w-4 text-[#1abf7a]" />
-                            Croissance Mensuelle
+                            Ce Mois-ci
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="px-4 pb-6">
                         <div className="space-y-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-[#3f4555]">Nouveaux Candidats</span>
-                                <span className="text-[11px] text-[#1abf7a]">
-                                    {growthKPIs ? `+${growthKPIs.registrations.toLocaleString()}` : "+2,847"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-[#3f4555]">Entreprises Inscrites</span>
-                                <span className="text-[11px] text-[#1abf7a]">
-                                    {stats.partnerCompanies > 0 ? `+${Math.round(stats.partnerCompanies * 0.1).toLocaleString()}` : "+127"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-[#3f4555]">CV Traités IA</span>
-                                <span className="text-[11px] text-[#1abf7a]">
-                                    {growthKPIs ? `+${growthKPIs.cvAnalyzed.toLocaleString()}` : "+15,234"}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-[11px] text-[#3f4555]">Matchs Réussis</span>
-                                <span className="text-[11px] text-[#1abf7a]">
-                                    {growthKPIs ? `+${growthKPIs.interviewsDone.toLocaleString()}` : "+3,456"}
-                                </span>
-                            </div>
+                            {[
+                                { label: "Nouveaux Candidats", value: monthly?.newCandidates },
+                                { label: "Entreprises Inscrites", value: monthly?.newCompanies },
+                                { label: "CV Traités IA", value: monthly?.cvAnalyzed },
+                                { label: "Candidatures", value: monthly?.applications },
+                            ].map((row) => (
+                                <div key={row.label} className="flex justify-between items-center">
+                                    <span className="text-[11px] text-[#3f4555]">{row.label}</span>
+                                    <span className="text-[11px] text-[#1abf7a]">
+                                        {row.value === undefined ? "-" : `+${fmt(row.value)}`}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>

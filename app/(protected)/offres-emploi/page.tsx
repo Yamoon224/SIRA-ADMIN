@@ -172,7 +172,7 @@ export default function Page() {
                     title="Offres Actives"
                     value={jobStats ? String(jobStats.active) : "-"}
                     subtitle="Annonces publiées"
-                    note="+5% par rapport au mois dernier"
+                    note=""
                     borderClass="border-[#f0b475]"
                     iconClass="bg-[#ee9b3b]"
                     icon={Briefcase}
@@ -181,7 +181,7 @@ export default function Page() {
                     title="Candidatures Totales"
                     value={jobStats ? jobStats.totalApplicants.toLocaleString("fr-FR") : "-"}
                     subtitle="Ce mois"
-                    note="+18% par rapport au mois dernier"
+                    note=""
                     borderClass="border-[#a777ff]"
                     iconClass="bg-[#8550e9]"
                     icon={Users}
@@ -190,7 +190,7 @@ export default function Page() {
                     title="Total Offres"
                     value={jobStats ? jobStats.total.toLocaleString("fr-FR") : "-"}
                     subtitle="Toutes catégories"
-                    note="+12% par rapport au mois dernier"
+                    note=""
                     borderClass="border-[#55d5ac]"
                     iconClass="bg-[#2db77f]"
                     icon={TrendingUp}
@@ -199,7 +199,7 @@ export default function Page() {
                     title="Brouillons"
                     value={jobStats ? String(jobStats.draft) : "-"}
                     subtitle="En attente de publication"
-                    note="+8% par rapport au mois dernier"
+                    note=""
                     borderClass="border-[#d9dce6]"
                     iconClass="bg-[#4a89ef]"
                     icon={Building2}

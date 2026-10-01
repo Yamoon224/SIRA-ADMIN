@@ -106,7 +106,7 @@ export default function Page() {
             title: statsData ? String(statsData.total) : "-",
             subtitle: "Total candidatures",
             context: "Ce mois",
-            growth: "+12%",
+            growth: "",
             icon: FileText,
             iconClass: "bg-[#edf3ff] text-[#3f7fe8]",
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
@@ -115,7 +115,7 @@ export default function Page() {
             title: statsData ? String(statsData.enAttente) : "-",
             subtitle: "En attente",
             context: "À traiter",
-            growth: "+5%",
+            growth: "",
             icon: Clock3,
             iconClass: "bg-[#f4f5f8] text-[#4a5162]",
             growthClass: "bg-[#fff3dd] text-[#f0a04b]",
@@ -124,7 +124,7 @@ export default function Page() {
             title: statsData ? String(statsData.enCours) : "-",
             subtitle: "En cours d'examen",
             context: "En processus",
-            growth: "+18%",
+            growth: "",
             icon: Users,
             iconClass: "bg-[#edf3ff] text-[#3f7fe8]",
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
@@ -133,7 +133,7 @@ export default function Page() {
             title: statsData ? String(statsData.approuvees) : "-",
             subtitle: "Approuvées",
             context: "Validées",
-            growth: "+22%",
+            growth: "",
             icon: CheckCircle2,
             iconClass: "bg-[#edf3ff] text-[#3f7fe8]",
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
@@ -142,7 +142,7 @@ export default function Page() {
             title: avgScore,
             subtitle: "Score IA moyen",
             context: "Compatibilité",
-            growth: "+3%",
+            growth: "",
             icon: Brain,
             iconClass: "bg-[#edf3ff] text-[#3f7fe8]",
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
@@ -151,7 +151,7 @@ export default function Page() {
             title: tauxConversion,
             subtitle: "Taux de conversion",
             context: "Recrutement",
-            growth: "+7%",
+            growth: "",
             icon: TrendingUp,
             iconClass: "bg-[#edf3ff] text-[#3f7fe8]",
             growthClass: "bg-[#dff7e9] text-[#23b26f]",
@@ -270,9 +270,11 @@ export default function Page() {
                                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${metric.iconClass}`}>
                                     <metric.icon className="h-4 w-4" />
                                 </div>
-                                <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${metric.growthClass}`}>
-                                    {metric.growth}
-                                </Badge>
+                                {metric.growth && (
+                                    <Badge className={`rounded-full border-0 px-2 py-0.5 text-[10px] ${metric.growthClass}`}>
+                                        {metric.growth}
+                                    </Badge>
+                                )}
                             </div>
                             <p className="text-[37px] font-semibold leading-none text-[#232a38]">{metric.title}</p>
                             <p className="mt-2 text-[14px] font-medium text-[#2f3647]">{metric.subtitle}</p>
