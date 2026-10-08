@@ -1,17 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import {
-    Line,
-    LineChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts"
+import dynamic from "next/dynamic"
 import {
     DollarSign,
     Users,
@@ -28,6 +18,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DetailModal } from "@/components/modals/detail-modal"
 import { exportToCSV } from "@/lib/export-utils"
 import { subscriptionService, type SubscriptionStats, type SubscriptionRow } from "@/lib/services/subscription.service"
+
+// recharts (et ses dépendances d3-*) ne sont chargés qu'au moment où ces
+// graphiques sont effectivement affichés, au lieu d'alourdir le First Load
+// JS de toute la route /comptabilite.
+const RevenueLineChart = dynamic(
+    () => import("./_components/comptabilite-charts").then((m) => m.RevenueLineChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+const SubscriptionsBarChart = dynamic(
+    () => import("./_components/comptabilite-charts").then((m) => m.SubscriptionsBarChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+
+function ChartLoading() {
+    return <div className="flex h-full items-center justify-center text-[12px] text-[#8b92a3]">Chargement du graphique…</div>
+}
 
 type TrendPoint = { month: string; value: number }
 
@@ -156,21 +162,7 @@ export default function Page() {
                     </CardHeader>
                     <CardContent className="px-4 pb-5">
                         <div className="h-[170px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={revenueData} margin={{ top: 8, right: 6, left: 4, bottom: 0 }}>
-                                    <CartesianGrid stroke="#e8ebf2" strokeDasharray="3 3" vertical />
-                                    <XAxis dataKey="month" tick={{ fill: "#7f8797", fontSize: 11 }} axisLine={false} tickLine={false} />
-                                    <YAxis
-                                        tick={{ fill: "#7f8797", fontSize: 11 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        width={70}
-                                        tickFormatter={(value) => value.toLocaleString("fr-FR")}
-                                    />
-                                    <Tooltip formatter={(value: number) => [`${value.toLocaleString("fr-FR")} FCFA`, "Revenus"]} />
-                                    <Line type="monotone" dataKey="value" stroke="#2b78f6" strokeWidth={2.4} dot={false} />
-                                </LineChart>
-                            </ResponsiveContainer>
+                            <RevenueLineChart data={revenueData} />
                         </div>
                     </CardContent>
                 </Card>
@@ -181,20 +173,7 @@ export default function Page() {
                     </CardHeader>
                     <CardContent className="px-4 pb-5">
                         <div className="h-[170px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={subscriptionsData} margin={{ top: 8, right: 6, left: 4, bottom: 0 }}>
-                                    <CartesianGrid stroke="#e8ebf2" strokeDasharray="3 3" vertical={false} />
-                                    <XAxis dataKey="month" tick={{ fill: "#7f8797", fontSize: 11 }} axisLine={false} tickLine={false} />
-                                    <YAxis
-                                        tick={{ fill: "#7f8797", fontSize: 11 }}
-                                        axisLine={false}
-                                        tickLine={false}
-                                        allowDecimals={false}
-                                    />
-                                    <Tooltip formatter={(value: number) => [value, "Abonnements"]} />
-                                    <Bar dataKey="value" fill="#3b7ddd" radius={[2, 2, 0, 0]} maxBarSize={56} />
-                                </BarChart>
-                            </ResponsiveContainer>
+                            <SubscriptionsBarChart data={subscriptionsData} />
                         </div>
                     </CardContent>
                 </Card>

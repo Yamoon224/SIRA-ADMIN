@@ -1,24 +1,34 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import dynamic from "next/dynamic"
 import { analyticsService } from "@/lib/services/analytics.service"
 import { BarChart3, Users, Target, Send, TrendingUp, Eye } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    Legend,
-    Pie,
-    PieChart,
-    ResponsiveContainer,
-    XAxis,
-    YAxis,
-    Tooltip,
-} from "recharts"
+
+// recharts (et ses dépendances d3-*) ne sont chargés qu'au moment où ces
+// graphiques sont effectivement affichés, au lieu d'alourdir le First Load
+// JS de toute la route /analytics.
+const EvolutionAreaChart = dynamic(
+    () => import("./_components/analytics-charts").then((m) => m.EvolutionAreaChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+const ActivityPieChart = dynamic(
+    () => import("./_components/analytics-charts").then((m) => m.ActivityPieChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+const MonthlyBarChart = dynamic(
+    () => import("./_components/analytics-charts").then((m) => m.MonthlyBarChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+const UserDistributionPieChart = dynamic(
+    () => import("./_components/analytics-charts").then((m) => m.UserDistributionPieChart),
+    { ssr: false, loading: () => <ChartLoading /> },
+)
+
+function ChartLoading() {
+    return <div className="flex h-full items-center justify-center text-[12px] text-[#8b92a3]">Chargement du graphique…</div>
+}
 
 type AnalyticsData = {
     analyzedCVs: number
@@ -122,21 +132,7 @@ export default function Page() {
                     <CardContent className="px-4 pb-5">
                         <div className="h-[300px] w-full">
                             {hasEvolution ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={evolutionData} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-                                        <defs>
-                                            <linearGradient id="evolutionGradient" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="0%" stopColor="#1f53cc" stopOpacity={0.9} />
-                                                <stop offset="100%" stopColor="#1f53cc" stopOpacity={0.16} />
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid stroke="#e8ebf2" strokeDasharray="3 3" />
-                                        <XAxis dataKey="month" tick={{ fill: "#72809a", fontSize: 12 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fill: "#72809a", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                        <Tooltip formatter={(value: number) => [fmt(value), "CV analysés"]} />
-                                        <Area type="monotone" dataKey="value" stroke="#1241bd" strokeWidth={2} fill="url(#evolutionGradient)" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
+                                <EvolutionAreaChart data={evolutionData} />
                             ) : (
                                 <EmptyChart label={emptyLabel} />
                             )}
@@ -154,25 +150,7 @@ export default function Page() {
                     <CardContent className="px-4 pb-5">
                         <div className="h-[260px] w-full">
                             {activitySlices.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={activitySlices}
-                                            cx="50%"
-                                            cy="52%"
-                                            innerRadius={52}
-                                            outerRadius={88}
-                                            paddingAngle={3}
-                                            dataKey="value"
-                                            stroke="none"
-                                        >
-                                            {activitySlices.map((entry) => (
-                                                <Cell key={entry.name} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip formatter={(value: number, name: string) => [fmt(value), name]} />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                                <ActivityPieChart data={activitySlices} />
                             ) : (
                                 <EmptyChart label={emptyLabel} />
                             )}
@@ -194,17 +172,7 @@ export default function Page() {
                     <CardContent className="px-4 pb-5">
                         <div className="h-[300px] w-full">
                             {hasMonthly ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={monthlyActivity} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                                        <CartesianGrid stroke="#eceff5" strokeDasharray="3 3" />
-                                        <XAxis dataKey="month" tick={{ fill: "#72809a", fontSize: 11 }} axisLine={false} tickLine={false} />
-                                        <YAxis tick={{ fill: "#72809a", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                                        <Tooltip />
-                                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                                        <Bar dataKey="cv" name="CV analysés" fill="#23b27e" maxBarSize={26} />
-                                        <Bar dataKey="entretiens" name="Entretiens simulés" fill="#f39c12" maxBarSize={26} />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                                <MonthlyBarChart data={monthlyActivity} />
                             ) : (
                                 <EmptyChart label={emptyLabel} />
                             )}
@@ -219,16 +187,7 @@ export default function Page() {
                     <CardContent className="px-4 pb-5">
                         <div className="h-[260px] w-full">
                             {userSlices.length > 0 ? (
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie data={userSlices} cx="50%" cy="52%" outerRadius={68} dataKey="value" stroke="none">
-                                            {userSlices.map((entry) => (
-                                                <Cell key={entry.name} fill={entry.color} />
-                                            ))}
-                                        </Pie>
-                                        <Tooltip formatter={(value: number, name: string) => [fmt(value), name]} />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                                <UserDistributionPieChart data={userSlices} />
                             ) : (
                                 <EmptyChart label={emptyLabel} />
                             )}
